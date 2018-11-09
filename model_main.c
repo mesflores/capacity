@@ -17,6 +17,7 @@ tw_lptype model_lps[] = {
     (pre_run_f) NULL,
     (event_f) model_event,
     (revent_f) model_event_reverse,
+    (commit_f) NULL,
     (final_f) model_final,
     (map_f) model_map,
     sizeof(state)
