@@ -1,60 +1,64 @@
-//The header file template for a ROSS model
-//This file includes:
-// - the state and message structs
-// - extern'ed command line arguments
-// - custom mapping function prototypes (if needed)
-// - any other needed structs, enums, unions, or #defines
+
+// model.h
+// type definitions for all the LP types
 
 #ifndef _model_h
 #define _model_h
 
-#include "ross.h"
-
-//Example enumeration of message type... could also use #defines
+/********* Shared components across LPs *****/
 typedef enum {
-  HELLO,
-  GOODBYE,
+    TRAIN_ARRIVE,
+    TRAIN_DEPART
 } message_type;
 
-//Message struct
-//   this contains all data sent in an event
+// Message 
 typedef struct {
-  message_type type;
-  double contents;
-  tw_lpid sender;
+    message_type type;
+    tw_lpid origin;
+    passenger curr_pass;
 } message;
 
+/*******************************************/
+/**************** Station LP ***************/
 
-//State struct
-//   this defines the state of each LP
+// Station state
 typedef struct {
-  int rcvd_count_H;
-  int rcvd_count_G;
-  double value;
+    int p_arrive; // Passangers that arrived here
+    int p_depart; // Passangers that left
+    passenger curr_pass; //TODO Currently allows one passanger per station
 } state;
-
-
-//Command Line Argument declarations
-extern unsigned int setting_1;
 
 //Global variables used by both main and driver
 // - this defines the LP types
-extern tw_lptype model_lps[];
+extern tw_lptype station_lps[];
 
 //Function Declarations
-// defined in model_driver.c:
-extern void model_init(state *s, tw_lp *lp);
-extern void model_event(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
-extern void model_event_reverse(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
-extern void model_final(state *s, tw_lp *lp);
+// defined in station.c:
+extern void station_init(state *s, tw_lp *lp);
+extern void station_event(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
+extern void station_event_reverse(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
+extern void station_final(state *s, tw_lp *lp);
 // defined in model_map.c:
-extern tw_peid model_map(tw_lpid gid);
+extern tw_peid station_map(tw_lpid gid);
 
-/*
-//Custom mapping prototypes
-void model_cutom_mapping(void);
-tw_lp * model_mapping_to_lp(tw_lpid lpid);
-tw_peid model_map(tw_lpid gid);
-*/
+/*******************************************/
+/************* Transit Unit LP *************/
 
+// TU state
+typedef struct {
+    int station; // GID of current station
+    int status; // Some kind of state machine?
+    // This should be an array of some kind
+} tu_state;
+
+//Function Declarations
+// defined in transit_unit.c:
+extern void transit_unit_init(tu_state *s, tw_lp *lp);
+extern void transit_unit_event(tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
+extern void transit_unit_event_reverse(tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
+extern void transit_unit_final(tu_state *s, tw_lp *lp);
+
+extern tw_peid transit_unit_map(tw_lpid gid);
+
+/*******************************************/
 #endif

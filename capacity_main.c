@@ -6,6 +6,7 @@
 
 //includes
 #include "ross.h"
+#include "passenger.h"
 #include "model.h"
 
 // Define LP types
@@ -13,36 +14,48 @@
 //   multiple sets can be defined (for multiple LP types)
 tw_lptype model_lps[] = {
   {
-    (init_f) model_init,
+    (init_f) station_init,
     (pre_run_f) NULL,
-    (event_f) model_event,
-    (revent_f) model_event_reverse,
+    (event_f) station_event,
+    (revent_f) station_event_reverse,
     (commit_f) NULL,
-    (final_f) model_final,
-    (map_f) model_map,
+    (final_f) station_final,
+    (map_f) station_map,
+    sizeof(state)
+  },
+  {
+    (init_f) transit_unit_init,
+    (pre_run_f) NULL,
+    (event_f) transit_unit_event,
+    (revent_f) transit_unit_event_reverse,
+    (commit_f) NULL,
+    (final_f) transit_unit_final,
+    (map_f) transit_unit_map,
     sizeof(state)
   },
   { 0 },
 };
 
 //Define command line arguments default values
-unsigned int setting_1 = 0;
+unsigned int station_count = 0;
 
 //add your command line opts
 const tw_optdef model_opts[] = {
 	TWOPT_GROUP("ROSS Model"),
-	TWOPT_UINT("setting_1", setting_1, "first setting for this model"),
+	TWOPT_UINT("station_count", station_count, "Number of Stations"),
 	TWOPT_END(),
 };
 
 
 //for doxygen
-#define model_main main
+#define capacity_main main
 
-int model_main (int argc, char* argv[]) {
+int capacity_main (int argc, char* argv[]) {
 	int i;
 	int num_lps_per_pe;
-
+    
+    int total_nodes;
+    
 	tw_opt_add(model_opts);
 	tw_init(&argc, &argv);
 
@@ -67,8 +80,13 @@ int model_main (int argc, char* argv[]) {
 	// g_tw_nkp
 	// g_tw_synchronization_protocol
 
-	//assume 1 lp per node
-	num_lps_per_pe = 1;
+	//Given our total number of PEs figure out how many LPs should go to each
+    total_nodes = tw_nnodes();
+    if ((station_count % total_nodes) != 0) {
+        printf("Number of LPs must be divisible by nodes. (Stupid but ok)\n");
+        return -1;
+    }
+	num_lps_per_pe = station_count / total_nodes;
 
 	//set up LPs within ROSS
 	tw_define_lps(num_lps_per_pe, sizeof(message));
