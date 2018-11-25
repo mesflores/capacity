@@ -22,6 +22,7 @@ SET(capacity_srcs
     transit_unit.c
 	station.c
     model.h
+    model_mapping.c
 	model_config.h
 )
 

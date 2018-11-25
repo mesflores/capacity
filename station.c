@@ -19,7 +19,7 @@ void SWAP (int *a, int *b) {
 //Init function
 // - called once for each LP
 // ! LP can only send messages to itself during init !
-void station_init (state *s, tw_lp *lp) {
+void station_init (station_state *s, tw_lp *lp) {
     int self = lp->gid;
 
     // init state data
@@ -53,7 +53,7 @@ void station_init (state *s, tw_lp *lp) {
 }
 
 //Forward event handler
-void station_event (state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
+void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     int self = lp->gid;
     int dest;
     int curr_global;
@@ -126,7 +126,7 @@ void station_event (state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
 
 //Reverse Event Handler
-void station_event_reverse (state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
+void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     int self = lp->gid;
 
 
@@ -152,7 +152,7 @@ void station_event_reverse (state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 }
 
 //report any final statistics for this LP
-void station_final (state *s, tw_lp *lp){
+void station_final (station_state *s, tw_lp *lp){
     int self = lp->gid;
     printf("Station %d handled %d passengers\n", self, s->p_arrive);
 }

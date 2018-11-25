@@ -21,7 +21,7 @@ tw_lptype model_lps[] = {
     (commit_f) NULL,
     (final_f) station_final,
     (map_f) station_map,
-    sizeof(state)
+    sizeof(station_state)
   },
   {
     (init_f) transit_unit_init,
@@ -31,13 +31,17 @@ tw_lptype model_lps[] = {
     (commit_f) NULL,
     (final_f) transit_unit_final,
     (map_f) transit_unit_map,
-    sizeof(state)
+    sizeof(tu_state)
   },
   { 0 },
 };
 
 //Define command line arguments default values
 unsigned int station_count = 0;
+
+// Global stuff
+int g_num_stations = 0;
+int g_num_transit_units = 0;
 
 //add your command line opts
 const tw_optdef model_opts[] = {
@@ -55,7 +59,7 @@ int capacity_main (int argc, char* argv[]) {
 	int num_lps_per_pe;
     
     int total_nodes;
-    
+
 	tw_opt_add(model_opts);
 	tw_init(&argc, &argv);
 
@@ -87,6 +91,11 @@ int capacity_main (int argc, char* argv[]) {
         return -1;
     }
 	num_lps_per_pe = station_count / total_nodes;
+    num_lps_per_pe += 1;
+
+    // Set the two globals for the number of stations and stuff
+    g_num_stations = station_count;
+    g_num_transit_units = 1;
 
 	//set up LPs within ROSS
 	tw_define_lps(num_lps_per_pe, sizeof(message));
@@ -94,7 +103,7 @@ int capacity_main (int argc, char* argv[]) {
 
 	// IF there are multiple LP types
 	//    you should define the mapping of GID -> lptype index
-	//g_tw_lp_typemap = &model_typemap;
+	g_tw_lp_typemap = &model_typemap;
 
 	// set the global variable and initialize each LP's type
 	g_tw_lp_types = model_lps;
