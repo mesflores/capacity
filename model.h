@@ -25,13 +25,14 @@ typedef enum {
     TRAIN_BOARD, // Train now allowing boarding
     P_BOARD, // Passenger boarding
     TRAIN_CONT_BOARD, // Continue boarding
+    P_COMPLETE, // PAssengers are done boarding
     TRAIN_DEPART // Leave the station
 } message_type;
 
 // Message 
 typedef struct {
     message_type type;
-    tw_lpid origin;
+    tw_lpid source;
     short more; //For P_ messages, are there more coming?
     passenger curr_pass;
 } message;
@@ -49,8 +50,10 @@ typedef enum {
 
 typedef struct {
     station_sm curr_state; // What state is it in right now?
-    int p_arrive; // Passangers that arrived here
-    int p_depart; // Passangers that left
+    unsigned short queued_tu_present; // Anything in the queue?
+    tw_lpid queued_tu; // The TU queued up. TODO: For now a single int, should get expanded
+
+    /* Legacy stuff */
     passenger curr_pass; //TODO Currently allows one passanger per station
 } station_state;
 
@@ -87,6 +90,7 @@ typedef struct {
 //Function Declarations
 // defined in transit_unit.c:
 extern void transit_unit_init(tu_state *s, tw_lp *lp);
+extern void transit_unit_pre_run(tu_state *s, tw_lp *lp);
 extern void transit_unit_event(tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void transit_unit_event_reverse(tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void transit_unit_final(tu_state *s, tw_lp *lp);

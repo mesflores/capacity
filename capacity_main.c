@@ -25,7 +25,7 @@ tw_lptype model_lps[] = {
   },
   {
     (init_f) transit_unit_init,
-    (pre_run_f) NULL,
+    (pre_run_f) transit_unit_pre_run,
     (event_f) transit_unit_event,
     (revent_f) transit_unit_event_reverse,
     (commit_f) NULL,
@@ -40,7 +40,7 @@ tw_lptype model_lps[] = {
 unsigned int station_count = 0;
 
 // Global stuff
-int g_num_stations = 0;
+int g_num_stations = 10;
 int g_num_transit_units = 0;
 
 //add your command line opts

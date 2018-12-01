@@ -23,9 +23,13 @@ void station_init (station_state *s, tw_lp *lp) {
     int self = lp->gid;
 
     // init state data
-    s->p_arrive = 0;
-    s->p_depart = 0;
+    s->curr_state = ST_EMPTY; // Stations start empty
+    s->queued_tu_present = 0;
+    s->queued_tu = 0;
 
+
+
+/*
     // IF you're the first station, make a passenger
     if ((g_tw_mynode == 0) && (self == 0)) {
         s->curr_pass.start = self;
@@ -50,7 +54,9 @@ void station_init (station_state *s, tw_lp *lp) {
         msg->origin= self;
         tw_event_send(e);
     }
+*/
 }
+
 
 //Forward event handler
 void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
@@ -70,34 +76,55 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     switch (in_msg->type) {
         case TRAIN_ARRIVE : {
             tw_output(lp, "[%f] Train arriving at %d!\n", tw_now(lp), self);
-            // TODO: Currently the train only holds one person...
-            s->p_arrive += 1;
+          
+            // First, check to see what our state is
+            if ((s->curr_state == ST_OCCUPIED) || (s->curr_state == ST_BOARDING)) {
+                // If we are currently occupied, put the TU in the queue for 
+                // notification when the state transitions to empty
+                // Was anybody queued? if so hard error
+                if (s->queued_tu_present > 0) {
+                    printf("NOT IMPLEMENTED: proper station queues!\n");
+                    exit(-1);
+                }
+                // Otherwise, queue it up
+                s->queued_tu_present = 1;
+                s->queued_tu = in_msg->source;
 
-            // Go ahead and move the passenger into the local state
-            s->curr_pass.start = in_msg->curr_pass.start;
-            s->curr_pass.dest = in_msg->curr_pass.dest;
-            s->curr_pass.state = in_msg->curr_pass.state;
-
-            // Where is this station? If its a terminal break here
-            curr_global = tw_nnodes() * g_tw_nlp;
-            // If we are the last one, generate nothing and return
-            if (self == curr_global - 1) {
-                break;
+            } else {
+                //Go ahead and let it come in now
+                tw_event *e = tw_event_new(in_msg->source, 0, lp);
+                message *msg = tw_event_data(e);
+                // Station says its ok
+                msg->type = ST_ACK;
+                // All these passengers got on here I guess
+                msg->source = self;
+                tw_output(lp, "[%f] Sending ack message to %d!\n", tw_now(lp), in_msg->source);
+                tw_event_send(e);
+               
+                s->curr_state = ST_OCCUPIED;
             }
-        
-            // Schedule a train departure in the near future
-            tw_event *e = tw_event_new(self, 1, lp);
-            message *msg = tw_event_data(e);
-
-            msg->type = TRAIN_DEPART;
-            // The rest is garbage right now, so let's  just ignore
-            tw_event_send(e);
 
             break;
         }
+        case TRAIN_BOARD : {
+            // Passengers have finished alighting, waiting passengers can board
+
+            // TODO: Loop to send some boarding messages
+
+            // All done boarding, go ahead and tell the train we are done
+            tw_event *e = tw_event_new(in_msg->source, 0, lp);
+            message *msg = tw_event_data(e);
+            msg->type = P_COMPLETE;
+            msg->source = self;
+            tw_output(lp, "[%f] Sending boarding complete message to %d!\n", tw_now(lp), in_msg->source);
+            tw_event_send(e);
+        
+            break;
+        } 
         case TRAIN_DEPART : {
             tw_output(lp, "[%f] Train Departing %d\n", tw_now(lp), self);
 
+            /*
             // Schedule an arrival at the next station
             // This should be safe here, since trains will never depart from a terminal
             dest = self + 1; // This is safe here because we returned the last guy
@@ -114,6 +141,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
             // Ship it off!
             tw_event_send(e);
+            */
             break;
 
 
@@ -154,7 +182,6 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
 //report any final statistics for this LP
 void station_final (station_state *s, tw_lp *lp){
     int self = lp->gid;
-    printf("Station %d handled %d passengers\n", self, s->p_arrive);
 }
 
 //Given an LP's GID (global ID)
