@@ -84,7 +84,9 @@ typedef enum {
 typedef struct {
     transit_unit_sm curr_state; // Some kind of state machine?
     int station; // GID of current station
+    int route_index; // Current index in route
     // This should be an array of some kind
+    struct route_t* route; 
 } tu_state;
 
 //Function Declarations

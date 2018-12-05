@@ -12,7 +12,12 @@ typedef struct {
 } tu_state;
 
 //Function Declarations
+
 // defined in transit_unit.c:
+
+extern int* route_init(); // Init the route
+
+// Ross functions
 extern void transit_unit_init(tu_state *s, tw_lp *lp);
 extern void transit_unit_event(tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void transit_unit_event_reverse(tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp);

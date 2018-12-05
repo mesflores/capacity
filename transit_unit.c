@@ -6,8 +6,10 @@
 #include <stdio.h>
 
 #include "ross.h"
+#include "route.h"
 #include "passenger.h"
 #include "model.h"
+
 
 //Init function
 // - called once for each LP
@@ -19,6 +21,13 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
     s->curr_state = TU_IDLE; // Starts nowhere
 
     s->station = -1; // XXX I dunno, we'll figure it out XXX
+    s->route_index = 0;
+
+    // Go ahead and init the route
+    int steps[] = {0,1,2,3,4,5,6,7,8,9};
+    int delay[] = {10,10,10,10,10,10,10,10,10,10};
+    s->route = init_route(steps, delay, 10);
+
 
     return;
 }
@@ -68,6 +77,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             // A station said we are good to go!
             // Go ahead and put yourself in alight mode 
             s->curr_state = TU_ALIGHT; 
+            s->station = in_msg->source;
 
             // TODO: Send messages to station to empty passengers
 
@@ -94,9 +104,16 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             tw_output(lp, "[%f] Sending depart to %d!\n", tw_now(lp), in_msg->source);
             tw_event_send(e);
 
+            // Not at that station anymore
+            s->station = -1;
+
             // Ok tell the next station that we are on our way 
-            // TODO figure out the next station properly
-            next_station = in_msg->source + 1;
+            next_station = get_next(s->route, s->route_index);
+            // Actually we were at the end
+            if (next_station == -1) {
+                // TODO: is there a better way to terminate?
+                break;
+            }
             // Time it takes to get to the next station
             delay = 10;
             // Send it an approach message
