@@ -27,34 +27,16 @@ void station_init (station_state *s, tw_lp *lp) {
     s->queued_tu_present = 0;
     s->queued_tu = 0;
 
-
-
-/*
-    // IF you're the first station, make a passenger
-    if ((g_tw_mynode == 0) && (self == 0)) {
-        s->curr_pass.start = self;
-        s->curr_pass.dest = (tw_nnodes() * g_tw_nlp) - 1;
-        s->curr_pass.state = WAIT;
-     
-    // Otherwise create one with dumb settings for now
-    } else {
-        s->curr_pass.start = 0;
-        s->curr_pass.dest = 0;
-        s->curr_pass.state = UNINIT;
-        
-    }
-
-    // Init message to myself
-    // Will kick off everything else
-    if ((g_tw_mynode == 0) && (self == 0)) {
-        tw_event *e = tw_event_new(self, 1, lp);
+    // Send yourself a message to kick of the passenger arrivals
+    // TODO Pick a better inter-pass-arrival time
+    if (self == 5) { 
+        tw_event *e = tw_event_new(self, 3, lp);
         message *msg = tw_event_data(e);
-        msg->type = TRAIN_ARRIVE;
+        msg->type = P_ARRIVE;
         // All these passengers got on here I guess
-        msg->origin= self;
+        msg->source= self;
         tw_event_send(e);
     }
-*/
 }
 
 
@@ -74,6 +56,32 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
     // handle the message
     switch (in_msg->type) {
+        case P_ARRIVE : {
+            //  A new passenger has arrived at the station
+            // Pick a dest.
+            // TODO: Pick these for real...
+            // For now, send them to the last stop
+            int dest = 9;
+
+            tw_output(lp, "[%f] Passenger arriving at %d!\n", tw_now(lp), self);
+            passenger_t* new_pass = create_passenger(self, dest, tw_now(lp));
+
+            // Put him in the list
+            new_pass->next = s->pass_list;
+            s->pass_list = new_pass;
+
+            // Sechedule the next arrival
+            // TODO Pick a better inter-pass-arrival time
+            tw_event *e = tw_event_new(self, 3, lp);
+            message *msg = tw_event_data(e);
+            msg->type = P_ARRIVE;
+            // All these passengers got on here I guess
+            msg->source = self;
+            // TODO: reactivate
+            //tw_event_send(e);
+
+            break;
+        }
         case TRAIN_ARRIVE : {
             tw_output(lp, "[%f] Train arriving at %d!\n", tw_now(lp), self);
           
@@ -108,8 +116,45 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
         }
         case TRAIN_BOARD : {
             // Passengers have finished alighting, waiting passengers can board
-
             // TODO: Loop to send some boarding messages
+
+            passenger_t* prev_pass = NULL;
+            passenger_t* curr_pass = s->pass_list;
+   
+            // Ok we have somebody to check
+            // XXX XXX XXX I think this might be very hard to do backwards... XXX XXX XXX
+            if (curr_pass != NULL) {
+                while(curr_pass != NULL) {
+                    if (should_board(curr_pass) == 1) {
+                        // Send  boarding message!
+                        tw_output(lp, "[%f] Sending boarding message to %d!\n", tw_now(lp), in_msg->source);
+                        tw_event *e = tw_event_new(in_msg->source, 0, lp);
+                        message *msg = tw_event_data(e);
+                        msg->type = P_BOARD;
+                        msg->source = self;
+                        // Just copy the passenger on
+                        memcpy(&(msg->curr_pass), curr_pass, sizeof(passenger_t));
+                        // Clear out the list in the copy
+                        (msg->curr_pass).next=NULL;
+                        tw_event_send(e);
+
+                        // Cut the curr pass out of the list
+                        if (prev_pass == NULL) {
+                            s->pass_list = curr_pass->next;
+                        } else {
+                            prev_pass->next = curr_pass->next;
+                        }
+
+                        // Hard break out
+                        return;
+                    }
+                    // Advance the loop 
+                    prev_pass = curr_pass;
+                    curr_pass = curr_pass->next;
+                }
+            }
+            // Ok so if we made it here, either: no passengers or the ones that are here shouldnt board
+
 
             // All done boarding, go ahead and tell the train we are done
             tw_event *e = tw_event_new(in_msg->source, 0, lp);

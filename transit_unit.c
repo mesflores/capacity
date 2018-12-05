@@ -28,6 +28,8 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
     int delay[] = {10,10,10,10,10,10,10,10,10,10};
     s->route = init_route(steps, delay, 10);
 
+    s->pass_list = NULL;
+    s->pass_count = 0;
 
     return;
 }
@@ -108,13 +110,17 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             s->station = -1;
 
             // Ok tell the next station that we are on our way 
-            next_station = get_next(s->route, s->route_index);
+            next_station = get_next(s->route, &(s->route_index));
             // Actually we were at the end
             if (next_station == -1) {
                 // TODO: is there a better way to terminate?
                 break;
             }
+            // Bump the routeindex
+            s->route_index += 1;
+
             // Time it takes to get to the next station
+            // TODO: Read this off a graph
             delay = 10;
             // Send it an approach message
             tw_event *approach = tw_event_new(next_station, delay, lp);
@@ -123,6 +129,27 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             next_msg->source = self;
             tw_output(lp, "[%f] Sending approach to %d!\n", tw_now(lp), next_station);
             tw_event_send(approach);
+            break;
+        }
+        case P_BOARD : {
+            // Passenger!
+            passenger_t* new_pass = tw_calloc(TW_LOC, "create_passenger", sizeof(passenger_t), 1);
+            // Copy it in
+            memcpy(new_pass, &(in_msg->curr_pass), sizeof(passenger_t));
+            // Stick it in the list
+            new_pass->next = s->pass_list;
+            s->pass_list = new_pass;
+            s->pass_count += 1;
+            tw_output(lp, "[%f] Passendger boarded %d!\n", tw_now(lp), self);
+
+            // Have it continue boarding.
+            // TODO: Probably we could do this optimistically instead of explicit acks...
+            tw_event *e = tw_event_new(in_msg->source, 0, lp);
+            message *msg = tw_event_data(e);
+            msg->type = TRAIN_BOARD;
+            msg->source = self;
+            tw_output(lp, "[%f] Continue boarding to %d!\n", tw_now(lp), in_msg->source);
+            tw_event_send(e);
             break;
         }
         default :

@@ -18,7 +18,8 @@ enum type_vals {
 tw_lpid model_typemap (tw_lpid gid);
 
 typedef enum {
-    TRAIN_ARRIVE, // Train is approaching the statoon
+    TRAIN_ARRIVE, // Train is approaching the station
+    P_ARRIVE, // Passenger arriving at the station
     ST_ACK, // Station said ok
     ST_NACK, // Station said Im busy
     P_ALIGHT, // Passenger getting off
@@ -34,7 +35,7 @@ typedef struct {
     message_type type;
     tw_lpid source;
     short more; //For P_ messages, are there more coming?
-    passenger curr_pass;
+    passenger_t curr_pass;
 } message;
 
 /*******************************************/
@@ -53,8 +54,7 @@ typedef struct {
     unsigned short queued_tu_present; // Anything in the queue?
     tw_lpid queued_tu; // The TU queued up. TODO: For now a single int, should get expanded
 
-    /* Legacy stuff */
-    passenger curr_pass; //TODO Currently allows one passanger per station
+    passenger_t* pass_list; //Passenger linked list
 } station_state;
 
 //Global variables used by both main and driver
@@ -87,6 +87,10 @@ typedef struct {
     int route_index; // Current index in route
     // This should be an array of some kind
     struct route_t* route; 
+    // TODO Almost certainly we want to sort these by where they are getting off...
+    // for now, a big stupid linked list
+    passenger_t* pass_list; //Passenger linked list
+    int pass_count;
 } tu_state;
 
 //Function Declarations

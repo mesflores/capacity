@@ -19,6 +19,7 @@ INCLUDE_DIRECTORIES(${ROSS_SOURCE_DIR} ${ROSS_BINARY_DIR})
 SET(capacity_srcs
 	capacity_main.c
     passenger.h
+    passenger.c
     route.h
     route.c
     transit_unit.c

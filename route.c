@@ -31,13 +31,16 @@ route_t* init_route(int* steps, int* delays, int len) {
     return route_obj;
 }
 
+
 /* Get the next stop along the route */
-int get_next(route_t* route_obj, int current){
-    printf("curr is:%d\n", current);
-    printf("len is:%d\n", route_obj->length);
-    if (current == route_obj->length) {
+int get_next(route_t* route_obj, int* current){
+
+    int i;
+    int* route;
+
+    // If the enxt one is past the  edge, just go home
+    if (((*current) + 1)  == route_obj->length) {
         return -1;
     }
-    printf("curr is:%d\n", current);
-    return route_obj->route[current+1];
+    return route_obj->route[(*current)+1];
 }

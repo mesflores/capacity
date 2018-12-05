@@ -16,7 +16,7 @@ typedef struct route_t {
 } route_t;
 
 route_t* init_route(int* steps, int* delays, int len);
-int get_next(route_t* route_obj, int current);
+int get_next(route_t* route_obj, int* current);
 
 
 
