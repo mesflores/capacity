@@ -1,0 +1,15 @@
+<div class="site-header">
+ <h1>
+      <a class="site-title" href="{{ site.baseurl }}/">{{ site.title }}</a>
+    </h1>
+    <nav class="site-nav">
+      <span>
+      <a class="page-link" href="{{ site.baseurl }}/">Home</a>
+      {% for node in site.pages %}
+        {% unless node.title == null or node.url == "/" %}
+          <a class="page-link" href="{{ node.url | prepend: site.baseurl }}">{{ node.title }}</a>
+        {% endunless %}
+      {% endfor %}
+      </span>
+    </nav>
+</div>
