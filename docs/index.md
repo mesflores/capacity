@@ -1,3 +1,8 @@
+---
+layout: index
+title: Capacity
+---
+
 ![](https://github.com/mesflores/capacity/raw/master/components/logo/logo-256.png)
 
 # Capacity
