@@ -3,8 +3,6 @@ layout: index
 title: Capacity
 ---
 
-![](https://github.com/mesflores/capacity/raw/master/components/logo/logo-256.png)
-
 # Capacity
 
 This is a project exploring a discrete event simulation of transit systems.
