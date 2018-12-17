@@ -6,6 +6,7 @@
 
 //includes
 #include "ross.h"
+#include "graph.h"
 #include "passenger.h"
 #include "model.h"
 
@@ -107,6 +108,10 @@ int capacity_main (int argc, char* argv[]) {
 
 	// set the global variable and initialize each LP's type
 	g_tw_lp_types = model_lps;
+
+    // Init the global vars
+    graph_init();
+
 	tw_lp_setup_types();
 
 	// Do some file I/O here? on a per-node (not per-LP) basis

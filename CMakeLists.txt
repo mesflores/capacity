@@ -18,6 +18,8 @@ INCLUDE_DIRECTORIES(${ROSS_SOURCE_DIR} ${ROSS_BINARY_DIR})
 # All source files for the model
 SET(capacity_srcs
 	capacity_main.c
+    graph.h
+    graph.c
     passenger.h
     passenger.c
     route.h

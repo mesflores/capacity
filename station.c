@@ -8,6 +8,7 @@
 #include "ross.h"
 #include "passenger.h"
 #include "model.h"
+#include "graph.h"
 
 //Helper Functions
 void SWAP (int *a, int *b) {
@@ -37,6 +38,7 @@ void station_init (station_state *s, tw_lp *lp) {
         msg->source= self;
         tw_event_send(e);
     }
+
 }
 
 
