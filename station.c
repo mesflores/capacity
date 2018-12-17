@@ -100,7 +100,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
             } else {
                 //Go ahead and let it come in now
-                tw_event *e = tw_event_new(in_msg->source, 0, lp);
+                tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
                 message *msg = tw_event_data(e);
                 // Station says its ok
                 msg->type = ST_ACK;
@@ -128,7 +128,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                     if (should_board(curr_pass) == 1) {
                         // Send  boarding message!
                         tw_output(lp, "[%f] Sending boarding message to %d!\n", tw_now(lp), in_msg->source);
-                        tw_event *e = tw_event_new(in_msg->source, 0, lp);
+                        tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
                         message *msg = tw_event_data(e);
                         msg->type = P_BOARD;
                         msg->source = self;
@@ -157,7 +157,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
 
             // All done boarding, go ahead and tell the train we are done
-            tw_event *e = tw_event_new(in_msg->source, 0, lp);
+            tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
             message *msg = tw_event_data(e);
             msg->type = P_COMPLETE;
             msg->source = self;

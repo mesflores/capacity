@@ -5,6 +5,8 @@
 #ifndef _model_h
 #define _model_h
 
+#define CONTROL_EPOCH .006
+
 /********* Shared components across LPs *****/
 
 extern int g_num_stations;

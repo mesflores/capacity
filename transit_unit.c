@@ -40,13 +40,14 @@ void transit_unit_pre_run (tu_state *s, tw_lp *lp) {
 
     // Send an approach message to the first station on the schedule
     // For now, that's (very dubiously) hard coded at 0
-    tw_event *e = tw_event_new(0, 0, lp);
+    tw_event *e = tw_event_new(0, CONTROL_EPOCH, lp);
     message *msg = tw_event_data(e);
     msg->type = TRAIN_ARRIVE;
     // All these passengers got on here I guess
     msg->source = self;
     tw_output(lp, "Sending arrive message to 0!\n");
     tw_event_send(e);
+    tw_output(lp, "Sent arrive message to 0!\n");
 
     // Update your own state
     s->curr_state = TU_APPROACH;
@@ -84,7 +85,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             // TODO: Send messages to station to empty passengers
 
             // For now, no passengers go right to boarding
-            tw_event *e = tw_event_new(in_msg->source, 0, lp);
+            tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
             message *msg = tw_event_data(e);
             msg->type = TRAIN_BOARD;
             msg->source = self;
@@ -99,7 +100,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
         case P_COMPLETE : {
             // station is all done boarding 
             // Ok all done go ahead and depart
-            tw_event *e = tw_event_new(in_msg->source, 0, lp);
+            tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
             message *msg = tw_event_data(e);
             msg->type = TRAIN_DEPART;
             msg->source = self;
@@ -140,11 +141,11 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             new_pass->next = s->pass_list;
             s->pass_list = new_pass;
             s->pass_count += 1;
-            tw_output(lp, "[%f] Passendger boarded %d!\n", tw_now(lp), self);
+            tw_output(lp, "[%f] Passendger boarded train %d!\n", tw_now(lp), self);
 
             // Have it continue boarding.
             // TODO: Probably we could do this optimistically instead of explicit acks...
-            tw_event *e = tw_event_new(in_msg->source, 0, lp);
+            tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
             message *msg = tw_event_data(e);
             msg->type = TRAIN_BOARD;
             msg->source = self;
