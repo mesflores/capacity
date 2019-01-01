@@ -6,7 +6,7 @@
 
 //includes
 #include "ross.h"
-#include "graph.h"
+#include "graph_lib/graph.h"
 #include "passenger.h"
 #include "model.h"
 

@@ -15,11 +15,15 @@ INCLUDE_DIRECTORIES(${ROSS_SOURCE_DIR} ${ROSS_BINARY_DIR})
 #SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_SOURCE_DIR}/model_config.h.in PROPERTIES GENERATED FALSE)
 #SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_BINARY_DIR}/model_config.h PROPERTIES GENERATED TRUE)
 
+# Sources for the graph library
+set(graph_srcs
+    graph_lib/graph.h
+    graph_lib/graph.c
+)
+
 # All source files for the model
 SET(capacity_srcs
 	capacity_main.c
-    graph.h
-    graph.c
     passenger.h
     passenger.c
     route.h
@@ -31,16 +35,22 @@ SET(capacity_srcs
 	model_config.h
 )
 
+# For the tests
 SET(test_src
     test.c
 )
 
+# Add the libraries
+ADD_LIBRARY(GRAPH_LIB ${graph_srcs})
+TARGET_LINK_LIBRARIES(GRAPH_LIB ROSS)
+
 # Set the executable name here: model
 # You will be executing the ./model binary
 ADD_EXECUTABLE(capacity-r ${capacity_srcs})
-ADD_EXECUTABLE(test_exe ${test_src})
+TARGET_LINK_LIBRARIES(capacity-r ROSS m GRAPH_LIB)
 
-TARGET_LINK_LIBRARIES(capacity-r ROSS m)
+ADD_EXECUTABLE(test_exe ${test_src})
+TARGET_LINK_LIBRARIES(test_exe m GRAPH_LIB)
 ## Alternatively, use this command with RIO
 #TARGET_LINK_LIBRARIES(model ROSS RIO m)
 

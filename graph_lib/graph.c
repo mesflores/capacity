@@ -29,6 +29,8 @@ void graph_init() {
     for (i=1; i < (g_graph_t->vert_count ); i++) {
         add_edge(g_graph_t, i, i-1, 10); 
     }
+
+    
 }
 
 /*
