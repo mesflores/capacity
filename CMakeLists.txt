@@ -31,10 +31,18 @@ SET(capacity_srcs
 	model_config.h
 )
 
+SET(test_src
+    test.c
+)
+
 # Set the executable name here: model
 # You will be executing the ./model binary
 ADD_EXECUTABLE(capacity-r ${capacity_srcs})
+ADD_EXECUTABLE(test_exe ${test_src})
 
 TARGET_LINK_LIBRARIES(capacity-r ROSS m)
 ## Alternatively, use this command with RIO
 #TARGET_LINK_LIBRARIES(model ROSS RIO m)
+
+# Add some tests
+ADD_TEST(NAME capacity_test COMMAND test_exe)

@@ -23,7 +23,6 @@ typedef enum {
     TRAIN_ARRIVE, // Train is approaching the station
     P_ARRIVE, // Passenger arriving at the station
     ST_ACK, // Station said ok
-    ST_NACK, // Station said Im busy
     P_ALIGHT, // Passenger getting off
     TRAIN_BOARD, // Train now allowing boarding
     P_BOARD, // Passenger boarding
