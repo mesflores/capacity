@@ -194,7 +194,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
         }
         default :
-            printf("Unhandeled forward message type %d\n", in_msg->type);
+            printf("Station Unhandeled forward message type %d\n", in_msg->type);
     }
 
 }

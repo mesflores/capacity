@@ -1,6 +1,8 @@
 INCLUDE_DIRECTORIES(${ROSS_SOURCE_DIR} ${ROSS_BINARY_DIR})
 ## Must include binary dir for config.h
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
+
 ## If you will be using the RIO library add this
 #INCLUDE_DIRECTORIES(${RIO_SOURCE_DIR} ${RIO_BINARY_DIR})
 
@@ -18,6 +20,7 @@ INCLUDE_DIRECTORIES(${ROSS_SOURCE_DIR} ${ROSS_BINARY_DIR})
 # Sources for the graph library
 set(graph_srcs
     graph_lib/graph.h
+    graph_lib/graph_internal.h
     graph_lib/graph.c
 )
 
@@ -41,8 +44,13 @@ SET(test_src
 )
 
 # Add the libraries
+find_package(igraph REQUIRED)
+
+include_directories(${IGRAPH_INCLUDE_DIR})
+set(LIBS ${IGRAPH_LIBRARIES})
+
 ADD_LIBRARY(GRAPH_LIB ${graph_srcs})
-TARGET_LINK_LIBRARIES(GRAPH_LIB ROSS)
+TARGET_LINK_LIBRARIES(GRAPH_LIB ROSS ${LIBS})
 
 # Set the executable name here: model
 # You will be executing the ./model binary

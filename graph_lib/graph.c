@@ -1,70 +1,77 @@
 // graph.c
 // managing the graph
 
-#include "ross.h"
+#include <igraph.h>
 #include "graph.h"
+#include "graph_internal.h"
+
+/* Nabbed from the igraph examples, very handy */
+void print(igraph_t *g) {
+  igraph_vector_t el;
+  long int i, j, n;
+  char ch = igraph_is_directed(g) ? '>' : '-';
+
+  igraph_vector_init(&el, 0);
+  igraph_get_edgelist(g, &el, 0);
+  n = igraph_ecount(g);
+
+  for (i=0, j=0; i<n; i++, j+=2) {
+    printf("%ld --%c %ld: %ld\n",
+      (long)VECTOR(el)[j], ch, (long)VECTOR(el)[j+1], (long)EAN(g, "weight", i)); 
+  }
+  printf("\n");
+
+  igraph_vector_destroy(&el);
+}
 
 void graph_init() {
-    int i;
+    // Make a basic empty graph
+    // Not totally clear if I need to do this, but here we are
+    g_graph = (igraph_t *)calloc(1, sizeof(igraph_t));
 
-    // XXX XXX
-    // As a starter let's just encode a big list of 10 vertices connected
-    // in numerical order, ie 1 to 2 to 3 to 4... to 10
-    // XXX XXX
+
+    // XXX XXX XXX XXX
+    // For now, let's just add some hard coded stuff
+    igraph_matrix_t mat;
+
+    int m[10][10] = { { 0, 10, 12, 0, 0, 0, 0, 0, 0, 0}, 
+                      { 10, 0, 10, 0, 0, 0, 0, 0, 0, 0},
+                      { 0, 10, 0, 10, 0, 0, 0, 0, 0, 0},
+                      { 0, 0, 10, 0, 10, 0, 0, 0, 0, 0},
+                      { 0, 0, 0, 10, 0, 10, 0, 0, 0, 0},
+                      { 0, 0, 0, 0, 10, 0, 10, 0, 0, 0},
+                      { 0, 0, 0, 0, 0, 10, 0, 10, 0, 0},
+                      { 0, 0, 0, 0, 0, 0, 10, 0, 10, 0},
+                      { 0, 0, 0, 0, 0, 0, 0, 10, 0, 10},
+                      { 0, 0, 0, 0, 0, 0, 0, 0, 10, 0},
+                    };
+    long int i, j;
     
-    // Alloate the main graph struture
-    g_graph_t = tw_calloc(TW_LOC, "", sizeof(graph_t), 1);
-    // Set the vert count TODO: make this not as stupid
-    g_graph_t->vert_count = 10;
-    g_graph_t->vertices = tw_calloc(TW_LOC, "", sizeof(adj_list_t), g_graph_t->vert_count);
-    // Loop through and null out the lists
-    for (i=0; i < g_graph_t->vert_count; i++) {
-        g_graph_t->vertices[i].list = NULL;
-    }
-
-    // TODO: This is just shitty hardcoding
-    for (i=0; i < (g_graph_t->vert_count - 1); i++) {
-        add_edge(g_graph_t, i, i+1, 10); 
-    }
-    for (i=1; i < (g_graph_t->vert_count ); i++) {
-        add_edge(g_graph_t, i, i-1, 10); 
-    }
-
+    // Make a matrix object
+    igraph_matrix_init(&mat, 10, 10);
     
+    // Set everything in the matrix to the array
+    for (i=0; i<10; i++) for (j=0; j<10; j++) MATRIX(mat, i, j) = m[i][j];
+    
+    igraph_i_set_attribute_table(&igraph_cattribute_table);
+ 
+    // Go ahead and generate the graph
+    igraph_weighted_adjacency(g_graph, &mat, IGRAPH_ADJ_DIRECTED, 0, /*loops=*/ 1);
+    // Print it so we can make sure it did what we thought
+    print(g_graph); 
+
+    // XXX XXX XXX XXX
 }
 
 /*
- * add an edge to the graph 
+ * get the delat between two veritces 
  */
-void add_edge(graph_t* graph, int src, int dest, int weight) {
-    graph_node_t* new_edge; 
+int get_delay(int src, int dest) {
+    // TODO: Right now this assumes that the src and dest are IDs 
+    int edge_id;
 
-    // Carve us a home for it
-    new_edge = tw_calloc(TW_LOC, "", sizeof(graph_node_t), 1);
-    new_edge->vert_id = dest;
-    // Save the weight
-    new_edge->weight = weight;
-    // stuff it into the list
-    new_edge->next = graph->vertices[src].list;
-    graph->vertices[src].list = new_edge;
+    igraph_get_eid(g_graph, &edge_id,
+                   src, dest, IGRAPH_DIRECTED, 1);
+
+    return (int)EAN(g_graph, "weight", edge_id);
 }
-
-/* 
- *  lookup_weight - given a src and dest, lookup the weight of the link between
- *  them. Returns -1 if no link is found.
- */
-int lookup_weight(graph_t* graph, int src, int dest) {
-    graph_node_t* curr_vertex; 
-
-    curr_vertex = (graph->vertices)[src].list;
-
-    while (curr_vertex != NULL) {
-        if (curr_vertex->vert_id == dest) {
-            return curr_vertex->weight;
-        }
-    }
-    // We never found a match, bail
-    return -1;
-}
-
-

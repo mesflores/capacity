@@ -9,6 +9,7 @@
 #include "route.h"
 #include "passenger.h"
 #include "model.h"
+#include "graph_lib/graph.h"
 
 
 //Init function
@@ -121,8 +122,8 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             s->route_index += 1;
 
             // Time it takes to get to the next station
-            // TODO: Read this off a graph
-            delay = 10;
+            delay = get_delay(in_msg->source, next_station);
+
             // Send it an approach message
             tw_event *approach = tw_event_new(next_station, delay, lp);
             message *next_msg = tw_event_data(approach);
