@@ -3,6 +3,7 @@
 
 #include <igraph.h>
 #include "graph.h"
+#include "hash_table.h"
 #include "graph_internal.h"
 
 /* Nabbed from the igraph examples, very handy */

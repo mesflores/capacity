@@ -22,6 +22,8 @@ set(graph_srcs
     graph_lib/graph.h
     graph_lib/graph_internal.h
     graph_lib/graph.c
+    graph_lib/hash_table.c
+    graph_lib/hash_table.h
 )
 
 # All source files for the model
