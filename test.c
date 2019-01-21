@@ -6,5 +6,6 @@
 int main(int argc, char* argv[]) { 
     graph_init();
 
+    graph_destroy();
     return 0;
 }

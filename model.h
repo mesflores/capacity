@@ -51,6 +51,8 @@ typedef enum {
 } station_sm; //SM - state machine, not full state
 
 typedef struct {
+    char station_name[25]; // Identifier name for station TODO FIX SIZE
+
     station_sm curr_state; // What state is it in right now?
     unsigned short queued_tu_present; // Anything in the queue?
     tw_lpid queued_tu; // The TU queued up. TODO: For now a single int, should get expanded

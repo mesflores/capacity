@@ -26,8 +26,7 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
 
     // Go ahead and init the route
     int steps[] = {0,1,2,3,4,5,6,7,8,9};
-    int delay[] = {10,10,10,10,10,10,10,10,10,10};
-    s->route = init_route(steps, delay, 10);
+    s->route = init_route(steps, 10);
 
     s->pass_list = NULL;
     s->pass_count = 0;
@@ -65,6 +64,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     
     int delay;
     int next_station;
+    char curr_station;
 
 
     // initialize the bit field
@@ -122,7 +122,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             s->route_index += 1;
 
             // Time it takes to get to the next station
-            delay = get_delay(in_msg->source, next_station);
+            delay = get_delay_id(in_msg->source, next_station);
 
             // Send it an approach message
             tw_event *approach = tw_event_new(next_station, delay, lp);
@@ -134,6 +134,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             break;
         }
         case P_BOARD : {
+            /****** XXX This should be disabled, as passengers are not generated atm *****/
             // Passenger!
             passenger_t* new_pass = tw_calloc(TW_LOC, "create_passenger", sizeof(passenger_t), 1);
             // Copy it in
@@ -142,7 +143,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             new_pass->next = s->pass_list;
             s->pass_list = new_pass;
             s->pass_count += 1;
-            tw_output(lp, "[%f] Passendger boarded train %d!\n", tw_now(lp), self);
+            tw_output(lp, "[%f] Passenger boarded train %d!\n", tw_now(lp), self);
 
             // Have it continue boarding.
             // TODO: Probably we could do this optimistically instead of explicit acks...

@@ -8,18 +8,16 @@
 
 #include <stdio.h>
 
-route_t* init_route(int* steps, int* delays, int len) {
+route_t* init_route(int* steps, int len) {
     route_t* route_obj;
 
     // Alloate the route struc itself
     route_obj = tw_calloc(TW_LOC, "init_route", sizeof(route_t), 1);
     // ok, now allocate and copy the steps and delays
     route_obj->route = tw_calloc(TW_LOC, "init_route", sizeof(int), len);
-    route_obj->delay = tw_calloc(TW_LOC, "init_route", sizeof(int), len);
 
     // Copy the lists into there
     memcpy(route_obj->route, steps, sizeof(int) *len);
-    memcpy(route_obj->delay, delays, sizeof(int) *len);
 
     route_obj->length = len;
 

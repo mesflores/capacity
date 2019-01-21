@@ -64,6 +64,9 @@ int capacity_main (int argc, char* argv[]) {
 	tw_opt_add(model_opts);
 	tw_init(&argc, &argv);
 
+    // Init the global vars
+    graph_init();
+
 	//Do some error checking?
 	//Print out some settings?
 
@@ -109,8 +112,6 @@ int capacity_main (int argc, char* argv[]) {
 	// set the global variable and initialize each LP's type
 	g_tw_lp_types = model_lps;
 
-    // Init the global vars
-    graph_init();
 
 	tw_lp_setup_types();
 
@@ -119,6 +120,8 @@ int capacity_main (int argc, char* argv[]) {
 	tw_run();
 
 	tw_end();
+
+    graph_destroy();
 
 	return 0;
 }

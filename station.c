@@ -4,6 +4,7 @@
 
 //Includes
 #include <stdio.h>
+#include <string.h>
 
 #include "ross.h"
 #include "passenger.h"
@@ -28,9 +29,13 @@ void station_init (station_state *s, tw_lp *lp) {
     s->queued_tu_present = 0;
     s->queued_tu = 0;
 
+    // Lookup the name
+    memset(s->station_name, 0, 25); //TODO: Fix this size
+    name_lookup(s->station_name, self);
+
     // Send yourself a message to kick of the passenger arrivals
     // TODO Pick a better inter-pass-arrival time
-    if (self == 5) { 
+    if (self == 5) {
         tw_event *e = tw_event_new(self, 3, lp);
         message *msg = tw_event_data(e);
         msg->type = P_ARRIVE;
@@ -59,6 +64,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     // handle the message
     switch (in_msg->type) {
         case P_ARRIVE : {
+            /******* Disabled ******
             //  A new passenger has arrived at the station
             // Pick a dest.
             // TODO: Pick these for real...
@@ -81,7 +87,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             msg->source = self;
             // TODO: reactivate
             //tw_event_send(e);
-
+            ************************/
             break;
         }
         case TRAIN_ARRIVE : {

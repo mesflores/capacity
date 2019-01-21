@@ -2,6 +2,7 @@
 // managing the graph
 
 #include <igraph.h>
+#include <string.h>
 #include "graph.h"
 #include "hash_table.h"
 #include "graph_internal.h"
@@ -26,7 +27,6 @@ void print(igraph_t *g) {
 }
 
 void graph_init() {
-    // Make a basic empty graph
     // Not totally clear if I need to do this, but here we are
     g_graph = (igraph_t *)calloc(1, sizeof(igraph_t));
 
@@ -47,6 +47,8 @@ void graph_init() {
                       { 0, 0, 0, 0, 0, 0, 0, 0, 10, 0},
                     };
     long int i, j;
+    struct nlist* new;
+    char name;
     
     // Make a matrix object
     igraph_matrix_init(&mat, 10, 10);
@@ -61,18 +63,59 @@ void graph_init() {
     // Print it so we can make sure it did what we thought
     print(g_graph); 
 
+    // Let's also go ahead and set up the ID lookup
+    for (i=0; i<10; i++) {
+        name = (char)i;
+        new = install(id_lookup, &name, i);
+    }
+
+    // Let's setup the name lookup
+    // 0 it out
+    memset(name_lookup_ar, 0, sizeof(name_lookup_ar[0][0]) * 255 * 255);
+    // Just put the i in for now, hard coded to 10
+    for(i=0; i<10; i++) {
+        // Ascii offset
+        name_lookup_ar[i][0] = i + 48; 
+    }
+    name_lookup_ar_len = 10;
+
     // XXX XXX XXX XXX
 }
 
+void graph_destroy() {
+    igraph_destroy(g_graph);
+    free(g_graph);
+}
+
 /*
- * get the delat between two veritces 
+ * Lookup a name given an id
  */
-int get_delay(int src, int dest) {
-    // TODO: Right now this assumes that the src and dest are IDs 
+int name_lookup(char* dest, int id) {
+    if(id > name_lookup_ar_len) {
+        return -1;
+    }
+    strcpy(dest, name_lookup_ar[id]);
+    return 0;
+}
+
+/*
+ * get the delay between two veritces 
+ */
+int get_delay_id(int src, int dest) {
     int edge_id;
 
+    // Lookup the src and dest in the table
     igraph_get_eid(g_graph, &edge_id,
                    src, dest, IGRAPH_DIRECTED, 1);
 
     return (int)EAN(g_graph, "weight", edge_id);
+}
+
+int get_delay_name(char* src, char* dest) {
+    int src_id, dest_id;   
+
+    src_id = lookup(id_lookup, src)->defn;
+    dest_id = lookup(id_lookup, dest)->defn;
+
+    return get_delay_id(src_id, dest_id);
 }

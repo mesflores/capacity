@@ -15,7 +15,7 @@ typedef struct route_t {
     int terminal;
 } route_t;
 
-route_t* init_route(int* steps, int* delays, int len);
+route_t* init_route(int* steps, int len);
 int get_next(route_t* route_obj, int* current);
 
 

@@ -7,7 +7,13 @@
 
 // TODO: this should take command line input or something
 void graph_init();
+void graph_destroy();
 
-int get_delay(int src, int dest);
+int name_lookup(char* dest, int id);
+
+void find_path();
+
+int get_delay_id(int src, int dest);
+int get_delay_name(char* src, char* dest);
 
 #endif
