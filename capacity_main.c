@@ -37,8 +37,6 @@ tw_lptype model_lps[] = {
   { 0 },
 };
 
-//Define command line arguments default values
-unsigned int station_count = 0;
 
 // Global stuff
 int g_num_stations = 10;
@@ -47,7 +45,6 @@ int g_num_transit_units = 0;
 //add your command line opts
 const tw_optdef model_opts[] = {
 	TWOPT_GROUP("ROSS Model"),
-	TWOPT_UINT("station_count", station_count, "Number of Stations"),
 	TWOPT_END(),
 };
 
@@ -60,13 +57,15 @@ int capacity_main (int argc, char* argv[]) {
 	int num_lps_per_pe;
     
     int total_nodes;
+    int station_count;
 
 	tw_opt_add(model_opts);
 	tw_init(&argc, &argv);
 
     // Init the global vars
     graph_init();
-
+    station_count = get_station_count();
+    
 	//Do some error checking?
 	//Print out some settings?
 
