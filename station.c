@@ -31,7 +31,7 @@ void station_init (station_state *s, tw_lp *lp) {
 
     // Lookup the name
     memset(s->station_name, 0, 25); //TODO: Fix this size
-    name_lookup(s->station_name, self);
+    sta_name_lookup(s->station_name, self);
 
     // Send yourself a message to kick of the passenger arrivals
     // TODO Pick a better inter-pass-arrival time

@@ -25,8 +25,9 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
     s->route_index = 0;
 
     // Go ahead and init the route
-    int steps[] = {0,1,2,3,4,5,6,7,8,9};
-    s->route = init_route(steps, 10);
+    //int steps[] = {0,1,2,3,4,5,6,7,8,9};
+    char* steps[] = {"80122","80121", "80123", "80124", "80125", "80126", "80127", "80128"};
+    s->route = init_route(steps, 8);
 
     s->pass_list = NULL;
     s->pass_count = 0;

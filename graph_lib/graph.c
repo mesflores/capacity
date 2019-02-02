@@ -49,6 +49,7 @@ void graph_init() {
     // Let's setup the name lookup, 0 it out
     memset(name_lookup_ar, 0, sizeof(name_lookup_ar[0][0]) * 255 * 255);
 
+    // TODO: Command line arg with a reasonably placed default
     FILE* dat_file = fopen("/home/marcel/capacity/dat/out.dat", "r"); 
 
     if (dat_file == NULL) {
@@ -125,13 +126,21 @@ void graph_destroy() {
 /*
  * Lookup a name given an id
  */
-int name_lookup(char* dest, int id) {
+int sta_name_lookup(char* dest, int id) {
     if(id > name_lookup_ar_len) {
         return -1;
     }
     strcpy(dest, name_lookup_ar[id]);
     return 0;
 }
+
+/*
+ * Lookup an id given a name
+ */
+int sta_id_lookup(char* dest) {
+    return lookup(id_lookup, dest)->defn;
+}
+
 /*
  * Get the number of stations in the graph
  */
