@@ -24,6 +24,8 @@ set(graph_srcs
     graph_lib/graph.c
     graph_lib/hash_table.c
     graph_lib/hash_table.h
+    graph_lib/route.h
+    graph_lib/route.c
 )
 
 # All source files for the model
@@ -32,8 +34,6 @@ SET(capacity_srcs
 	capacity_main.c
     passenger.h
     passenger.c
-    route.h
-    route.c
     transit_unit.c
 	station.c
     model.h

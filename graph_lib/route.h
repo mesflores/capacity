@@ -11,8 +11,8 @@ typedef struct route_t {
     int length; // The length of the route
 
     // Some more meta information
-    char* origin;
-    char* terminal;
+    int origin;
+    int terminal;
 } route_t;
 
 route_t* init_route(char** steps, int len);

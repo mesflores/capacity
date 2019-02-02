@@ -3,8 +3,7 @@
 // route.c
 // Functions for managing routes
 
-#include "cap_definitions.h"
-#include "graph_lib/graph.h"
+#include "graph.h"
 #include "ross.h"
 #include "route.h"
 
@@ -27,8 +26,8 @@ route_t* init_route(char** steps, int len) {
     route_obj->length = len;
 
     // Set the origin and terminal based on what we were given
-    route_obj->origin = steps[0];
-    route_obj->terminal = steps[len-1];
+    route_obj->origin = (route_obj->route)[0];
+    route_obj->terminal = (route_obj->route)[len-1];
 
     return route_obj;
 }

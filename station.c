@@ -31,7 +31,7 @@ void station_init (station_state *s, tw_lp *lp) {
 
     // Lookup the name
     memset(s->station_name, 0, 25); //TODO: Fix this size
-    sta_name_lookup(s->station_name, self);
+    sta_name_copy(s->station_name, self);
 
     // Send yourself a message to kick of the passenger arrivals
     // TODO Pick a better inter-pass-arrival time
@@ -91,7 +91,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             break;
         }
         case TRAIN_ARRIVE : {
-            tw_output(lp, "[%f] Train arriving at %d!\n", tw_now(lp), self);
+            tw_output(lp, "[%.3f] ST %d: Train %d arriving at %s!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self));
           
             // First, check to see what our state is
             if ((s->curr_state == ST_OCCUPIED) || (s->curr_state == ST_BOARDING)) {
@@ -105,6 +105,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // Otherwise, queue it up
                 s->queued_tu_present = 1;
                 s->queued_tu = in_msg->source;
+                tw_output(lp, "[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source); 
 
             } else {
                 //Go ahead and let it come in now
@@ -114,7 +115,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 msg->type = ST_ACK;
                 // All these passengers got on here I guess
                 msg->source = self;
-                tw_output(lp, "[%f] Sending ack message to %d!\n", tw_now(lp), in_msg->source);
+                tw_output(lp, "[%.3f] ST %d: Sending ack message to %d!\n", tw_now(lp), self, in_msg->source);
                 tw_event_send(e);
                
                 s->curr_state = ST_OCCUPIED;
@@ -135,7 +136,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 while(curr_pass != NULL) {
                     if (should_board(curr_pass) == 1) {
                         // Send  boarding message!
-                        tw_output(lp, "[%f] Sending boarding message to %d!\n", tw_now(lp), in_msg->source);
+                        tw_output(lp, "[%.3f] ST %d: Sending boarding message to %d!\n", tw_now(lp), self, in_msg->source);
                         tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
                         message *msg = tw_event_data(e);
                         msg->type = P_BOARD;
@@ -169,13 +170,13 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             message *msg = tw_event_data(e);
             msg->type = P_COMPLETE;
             msg->source = self;
-            tw_output(lp, "[%f] Sending boarding complete message to %d!\n", tw_now(lp), in_msg->source);
+            tw_output(lp, "[%.3f] ST %d: Sending boarding complete message to %d!\n", tw_now(lp), self, in_msg->source);
             tw_event_send(e);
         
             break;
         } 
         case TRAIN_DEPART : {
-            tw_output(lp, "[%f] Train Departing %d\n", tw_now(lp), self);
+            tw_output(lp, "[%.3f] ST %d: Train Departing %s\n", tw_now(lp), self, sta_name_lookup(self));
 
             /*
             // Schedule an arrival at the next station
@@ -195,6 +196,28 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             // Ship it off!
             tw_event_send(e);
             */
+
+            // Go ahead and ack a queued train if there is one
+            if (s->queued_tu_present > 0) {
+                tw_event *e = tw_event_new(s->queued_tu, CONTROL_EPOCH, lp);
+                message *msg = tw_event_data(e);
+                // Station says its ok
+                msg->type = ST_ACK;
+                // All these passengers got on here I guess
+                msg->source = self;
+                tw_output(lp, "[%.3f] ST %d: Sending ack message to %d!\n", tw_now(lp), self, in_msg->source);
+                tw_event_send(e);
+              
+                // Bump to occupied, continue
+                s->curr_state = ST_OCCUPIED;
+                // Clear out the queue
+                s->queued_tu_present = 0;
+                s->queued_tu = 0;
+            } else {
+                // Nothing waiting, just go back to empty
+                s->curr_state = ST_EMPTY;
+            }
+
             break;
 
 

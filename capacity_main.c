@@ -87,6 +87,11 @@ int capacity_main (int argc, char* argv[]) {
 	// g_tw_nkp
 	// g_tw_synchronization_protocol
 
+    // Set the two globals for the number of stations and stuff
+    g_num_stations = station_count;
+
+    g_num_transit_units = 2;
+
 	//Given our total number of PEs figure out how many LPs should go to each
     total_nodes = tw_nnodes();
     if ((station_count % total_nodes) != 0) {
@@ -94,11 +99,8 @@ int capacity_main (int argc, char* argv[]) {
         return -1;
     }
 	num_lps_per_pe = station_count / total_nodes;
-    num_lps_per_pe += 1;
+    num_lps_per_pe += g_num_transit_units;
 
-    // Set the two globals for the number of stations and stuff
-    g_num_stations = station_count;
-    g_num_transit_units = 1;
 
 	//set up LPs within ROSS
 	tw_define_lps(num_lps_per_pe, sizeof(message));

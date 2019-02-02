@@ -11,7 +11,8 @@ void graph_destroy();
 
 
 /* Meta info */
-int sta_name_lookup(char* dest, int id);
+char* sta_name_lookup(int id);
+int sta_name_copy(char* dest, int id);
 int sta_id_lookup(char* dest);
 
 int get_station_count();

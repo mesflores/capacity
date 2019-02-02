@@ -126,7 +126,17 @@ void graph_destroy() {
 /*
  * Lookup a name given an id
  */
-int sta_name_lookup(char* dest, int id) {
+char* sta_name_lookup(int id) {
+    if(id > name_lookup_ar_len) {
+        return NULL;
+    }
+    return name_lookup_ar[id];
+}
+
+/*
+ * Lookup a name given an id and copy to dest
+ */
+int sta_name_copy(char* dest, int id) {
     if(id > name_lookup_ar_len) {
         return -1;
     }

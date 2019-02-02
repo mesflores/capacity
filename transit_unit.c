@@ -6,7 +6,7 @@
 #include <stdio.h>
 
 #include "ross.h"
-#include "route.h"
+#include "graph_lib/route.h"
 #include "passenger.h"
 #include "model.h"
 #include "graph_lib/graph.h"
@@ -16,6 +16,7 @@
 // - called once for each LP
 // ! LP can only send messages to itself during init !
 void transit_unit_init (tu_state *s, tw_lp *lp) {
+    int self = lp->gid;
 
     // Init the train state
     // TODO: At some point schedule initialization will be a complicated question
@@ -25,7 +26,6 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
     s->route_index = 0;
 
     // Go ahead and init the route
-    //int steps[] = {0,1,2,3,4,5,6,7,8,9};
     char* steps[] = {"80122","80121", "80123", "80124", "80125", "80126", "80127", "80128"};
     s->route = init_route(steps, 8);
 
@@ -40,15 +40,13 @@ void transit_unit_pre_run (tu_state *s, tw_lp *lp) {
     int self = lp->gid;
 
     // Send an approach message to the first station on the schedule
-    // For now, that's (very dubiously) hard coded at 0
-    tw_event *e = tw_event_new(0, CONTROL_EPOCH, lp);
+    tw_event *e = tw_event_new(s->route->origin, CONTROL_EPOCH, lp);
     message *msg = tw_event_data(e);
     msg->type = TRAIN_ARRIVE;
     // All these passengers got on here I guess
     msg->source = self;
-    tw_output(lp, "Sending arrive message to 0!\n");
+    tw_output(lp, "[%.3f] TU %d: Sending arrive message to %s\n", tw_now(lp), self, sta_name_lookup(s->route->origin));
     tw_event_send(e);
-    tw_output(lp, "Sent arrive message to 0!\n");
 
     // Update your own state
     s->curr_state = TU_APPROACH;
@@ -91,7 +89,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             message *msg = tw_event_data(e);
             msg->type = TRAIN_BOARD;
             msg->source = self;
-            tw_output(lp, "[%f] Sending alighting complete to %d!\n", tw_now(lp), in_msg->source);
+            tw_output(lp, "[%.3f] TU %d: Sending alighting complete to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             tw_event_send(e);
 
             // Train is now accepting boarding passengers
@@ -106,7 +104,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             message *msg = tw_event_data(e);
             msg->type = TRAIN_DEPART;
             msg->source = self;
-            tw_output(lp, "[%f] Sending depart to %d!\n", tw_now(lp), in_msg->source);
+            tw_output(lp, "[%.3f] TU %d: Sending depart to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             tw_event_send(e);
 
             // Not at that station anymore
@@ -130,7 +128,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             message *next_msg = tw_event_data(approach);
             next_msg->type = TRAIN_ARRIVE;
             next_msg->source = self;
-            tw_output(lp, "[%f] Sending approach to %d!\n", tw_now(lp), next_station);
+            tw_output(lp, "[%.3f] TU %d: Sending approach to %s!\n", tw_now(lp), self, sta_name_lookup(next_station));
             tw_event_send(approach);
             break;
         }
@@ -144,7 +142,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             new_pass->next = s->pass_list;
             s->pass_list = new_pass;
             s->pass_count += 1;
-            tw_output(lp, "[%f] Passenger boarded train %d!\n", tw_now(lp), self);
+            tw_output(lp, "[%.3f] TU %d: Passenger boarded train %d!\n", tw_now(lp), self, self);
 
             // Have it continue boarding.
             // TODO: Probably we could do this optimistically instead of explicit acks...
@@ -152,12 +150,12 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             message *msg = tw_event_data(e);
             msg->type = TRAIN_BOARD;
             msg->source = self;
-            tw_output(lp, "[%f] Continue boarding to %d!\n", tw_now(lp), in_msg->source);
+            tw_output(lp, "[%.3f] TU %d: Continue boarding to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             tw_event_send(e);
             break;
         }
         default :
-            printf("Unhandeled forward message type %d\n", in_msg->type);
+            printf("TU %d: Unhandeled forward message type %d\n", self, in_msg->type);
     }
 
 
