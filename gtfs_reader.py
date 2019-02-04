@@ -367,9 +367,36 @@ def gen_matrix_out(adj_matrix, outfile):
             for dst in adj_matrix[src]:
                 out_f.write("%s %s %d\n"%(src, dst, adj_matrix[src][dst]))
 
-def gen_routes_out():
+def gen_routes_out(data, outfile):
     """ Generate route info for runs described in GTFS"""
-    pass
+    with open(outfile, 'w') as out_f:
+        # First, let's get the start date 
+        min_date = min([y["start_date"] for (x, y) in data["calendar"].items()])
+        min_stamp = int(datetime.datetime.strptime(min_date, "%Y%m%d").timestamp())
+        out_f.write("%d\n"%(min_stamp))
+
+        # Now the specific routes
+        for route in data["routes"]:
+            # XXX XXX XXX XXX Keep it to expo for now XXX XXX XXX
+            if route != "806":
+                continue
+            # XXX XXX XXX XXX XXX XXX
+            route_list = generate_route(route, data)
+            for r in route_list:
+                # Write the seperator
+                # Write the start time in epoch
+                start_time = int(datetime.datetime.strptime(r[0][1], "%Y%m%d %H:%M:%S").timestamp())
+
+                # XXX XXX XXX XXX XXX XXX
+                if (start_time - min_stamp > 1*(12*60*60)):
+                    continue 
+                # XXX XXX XXX XXX XXX XXX
+
+                out_f.write("===\n");
+                out_f.write("%d\n"%(start_time));
+                for stop, s_time in r:
+                    out_f.write("%s "%stop)
+                out_f.write("\n")
 
 if __name__ == "__main__":
     # Take the directory with the GTFS files
@@ -383,5 +410,8 @@ if __name__ == "__main__":
     data = load_gtfs_data(data_dir)
 
     # Dump the adj matrix
-    gen_matrix_out(data["adj_matrix"], outfile)
+    #gen_matrix_out(data["adj_matrix"], outfile)
+
+    # Dump the routes themselves
+    gen_routes_out(data, outfile)
 
