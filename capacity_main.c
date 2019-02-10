@@ -90,7 +90,7 @@ int capacity_main (int argc, char* argv[]) {
     // Set the two globals for the number of stations and stuff
     g_num_stations = station_count;
 
-    g_num_transit_units = 2;
+    g_num_transit_units = 1;
 
 	//Given our total number of PEs figure out how many LPs should go to each
     total_nodes = tw_nnodes();

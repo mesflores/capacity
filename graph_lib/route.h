@@ -4,7 +4,19 @@
 #ifndef _route_h
 #define _route_h
 
+/********* Global route Management *******/
 
+typedef struct abstract_route_t {
+    char **stops;
+    int length;
+    int start_time;
+} abstract_route_t;
+
+void init_global_routes();
+void print_global_routes();
+
+
+/************ TU Route Data *************/
 typedef struct route_t {
     int* route; // The set of stations themselves
     int* delay;
