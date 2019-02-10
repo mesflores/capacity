@@ -16,7 +16,7 @@
 /**************** Global Route Lookup Stuff ****/
 
 // Read the config and init the global routes, return the number of runs
-void init_global_routes() {
+void init_global_routes(const char* routes_fn) {
     char line[512]; //XXX DANGEROUS
     char stops[256][128]; // XXX less but STILL DANGEROUS
 
@@ -35,7 +35,7 @@ void init_global_routes() {
     int i;
 
     // TODO: Add the path as a proper arg
-    FILE* dat_file = fopen("/home/marcel/capacity/dat/routes.dat", "r"); 
+    FILE* dat_file = fopen(routes_fn, "r"); 
     if (dat_file == NULL) {
         perror("Failed to open file!");
         exit(-1);

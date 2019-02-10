@@ -6,7 +6,7 @@
 
 
 // TODO: this should take command line input or something
-void graph_init();
+void graph_init(const char* matrix_fn);
 void graph_destroy();
 
 

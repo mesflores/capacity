@@ -380,10 +380,6 @@ def gen_routes_out(data, outfile):
 
         # Now the specific routes
         for route in data["routes"]:
-            # XXX XXX XXX XXX Keep it to expo for now XXX XXX XXX
-            if route != "806":
-                continue
-            # XXX XXX XXX XXX XXX XXX
             full_route_list.extend(generate_route(route, data))
 
         out_f.write("%d\n"%(len(full_route_list)))

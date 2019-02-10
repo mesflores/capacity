@@ -12,7 +12,7 @@ typedef struct abstract_route_t {
     int start_time;
 } abstract_route_t;
 
-void init_global_routes();
+void init_global_routes(const char* routes_fn);
 void print_global_routes();
 void set_route_offset(int offset);
 int get_route_count();

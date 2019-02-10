@@ -13,6 +13,9 @@ extern int g_num_stations;
 extern int g_num_transit_units;
 extern int g_time_offset;
 
+extern char g_adj_mat_fn[1024];
+extern char g_routes_fn[1024];
+
 enum type_vals {
     STATION,
     TRANSIT_UNIT

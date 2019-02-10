@@ -43,9 +43,16 @@ tw_lptype model_lps[] = {
 int g_num_stations = 10;
 int g_num_transit_units = 0;
 int g_time_offset = 0;
+
+//Intermediate GTFS data
+char g_adj_mat_fn[1024] = "dat/mat.dat";
+char g_routes_fn[1024] = "dat/routes.dat";
+
 //add your command line opts
 const tw_optdef model_opts[] = {
-	TWOPT_GROUP("ROSS Model"),
+	TWOPT_GROUP("Capacity Model"),
+    TWOPT_CHAR("mat", g_adj_mat_fn, "Adjacency matrix file"),
+    TWOPT_CHAR("routes", g_routes_fn, "Routes file"),
 	TWOPT_END(),
 };
 
@@ -63,8 +70,8 @@ int capacity_main (int argc, char* argv[]) {
 	tw_init(&argc, &argv);
 
     // Init the global vars
-    graph_init();
-    init_global_routes();
+    graph_init(g_adj_mat_fn);
+    init_global_routes(g_routes_fn);
       
 
 

@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include "graph.h"
 #include "hash_table.h"
-#include "graph_internal.h"
+#include "graph_int.h"
 
 /* Nabbed from the igraph examples, very handy */
 void print(igraph_t *g) {
@@ -28,10 +28,10 @@ void print(igraph_t *g) {
   igraph_vector_destroy(&el);
 }
 
-void graph_init() {
-    char line[128];
-    char src_name[128]={0};
-    char dst_name[128]={0};
+void graph_init(const char* matrix_fn) {
+    char line[256];
+    char src_name[MAX_NAME_LEN]={0};
+    char dst_name[MAX_NAME_LEN]={0};
     int delay;
 
     bool first_line = false;
@@ -47,22 +47,23 @@ void graph_init() {
     igraph_matrix_t mat;
 
     // Let's setup the name lookup, 0 it out
-    memset(name_lookup_ar, 0, sizeof(name_lookup_ar[0][0]) * 255 * 255);
+    memset(name_lookup_ar, 0, sizeof(name_lookup_ar[0][0]) * STA_MAX * MAX_NAME_LEN);
 
-    // TODO: Command line arg with a reasonably placed default
-    FILE* dat_file = fopen("/home/marcel/capacity/dat/out.dat", "r"); 
-
+    // Crack open te intermediate file
+    FILE* dat_file = fopen(matrix_fn, "r"); 
     if (dat_file == NULL) {
-        perror("Failed to open file!");
+        perror("Failed to open matrix file!");
         exit(-1);
     }
 
+    // Spin through and add all the edges descibed in the file
     while (fgets(line, sizeof(line), dat_file)) {
         // zero so we dont pick up garbage
-        memset(src_name, 0, 128);
-        memset(dst_name, 0, 128);
+        memset(src_name, 0, MAX_NAME_LEN);
+        memset(dst_name, 0, MAX_NAME_LEN);
         delay = 0;
 
+        // If it's the first line, it contains the dimension of the adj matrix
         if (first_line == false) {
             first_line = true;
             dimension = atoi(line);
@@ -73,6 +74,12 @@ void graph_init() {
         } 
         // For each line, get the values
         parse_dat_line(src_name, dst_name, &delay, line);
+
+        // Did everything look ok space wise?
+        if ((strlen(src_name) > MAX_NAME_LEN) || (strlen(dst_name) > MAX_NAME_LEN)) {
+            perror("Attempted to load a station name that was too long!");
+            exit(-1);
+        }
 
         // Do we have an id for the src?
         current = lookup(id_lookup, src_name);
@@ -90,7 +97,14 @@ void graph_init() {
         current = lookup(id_lookup, dst_name);
         if (current == NULL) {
             dst_id = max_id;
+
             max_id++; // Bump it up
+            // Are we OK on the number of stations we loaded?
+            if (max_id > STA_MAX) {
+                perror("Attempted to load too many stations!");
+                exit(-1);
+            }
+
             install(id_lookup, dst_name, dst_id);
         } else {
             dst_id = current->defn;
@@ -115,7 +129,7 @@ void graph_init() {
     // Print it so we can make sure it did what we thought
     //print(g_graph); 
 
-    station_count = dimension;
+    g_station_count = dimension;
 }
 
 void graph_destroy() {
@@ -155,7 +169,7 @@ int sta_id_lookup(char* dest) {
  * Get the number of stations in the graph
  */
 int get_station_count() {
-    return station_count;
+    return g_station_count;
 }
 
 

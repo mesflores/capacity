@@ -20,12 +20,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules/")
 # Sources for the graph library
 set(graph_srcs
     graph_lib/graph.h
-    graph_lib/graph_internal.h
+    graph_lib/graph_int.h
     graph_lib/graph.c
     graph_lib/hash_table.c
     graph_lib/hash_table.h
     graph_lib/route.h
     graph_lib/route.c
+    graph_lib/route_int.h
 )
 
 # All source files for the model
