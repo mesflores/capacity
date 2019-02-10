@@ -42,7 +42,7 @@ tw_lptype model_lps[] = {
 // Global stuff
 int g_num_stations = 10;
 int g_num_transit_units = 0;
-
+int g_time_offset = 0;
 //add your command line opts
 const tw_optdef model_opts[] = {
 	TWOPT_GROUP("ROSS Model"),
@@ -94,6 +94,9 @@ int capacity_main (int argc, char* argv[]) {
     // TODO: These should not map 1 to 1, but for now they do for simplicity
     g_num_transit_units = get_route_count();
     set_route_offset(g_num_stations);
+
+    // Set the global time offset
+    g_time_offset = get_g_start_time();
 
 	//Given our total number of PEs figure out how many LPs should go to each
     total_nodes = tw_nnodes();

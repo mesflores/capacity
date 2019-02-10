@@ -16,6 +16,7 @@ void init_global_routes();
 void print_global_routes();
 void set_route_offset(int offset);
 int get_route_count();
+int get_g_start_time();
 abstract_route_t* get_route(int id);
 
 

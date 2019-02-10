@@ -27,10 +27,8 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
 
     // Go ahead and init the route
     abstract_route_t* my_route = get_route(self);
-
-    printf("LEN: %d\n", my_route->length);
     s->route = init_route(my_route->stops, my_route->length);
-
+    s->start = my_route->start_time - g_time_offset;
     s->pass_list = NULL;
     s->pass_count = 0;
 
@@ -42,7 +40,7 @@ void transit_unit_pre_run (tu_state *s, tw_lp *lp) {
     int self = lp->gid;
 
     // Send an approach message to the first station on the schedule
-    tw_event *e = tw_event_new(s->route->origin, CONTROL_EPOCH, lp);
+    tw_event *e = tw_event_new(s->route->origin, s->start, lp);
     message *msg = tw_event_data(e);
     msg->type = TRAIN_ARRIVE;
     // All these passengers got on here I guess

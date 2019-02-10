@@ -19,7 +19,6 @@
 void init_global_routes() {
     char line[512]; //XXX DANGEROUS
     char stops[256][128]; // XXX less but STILL DANGEROUS
-    int g_start_time;
 
     int start_time = 0;
     char* curr;
@@ -140,6 +139,10 @@ int get_route_count() {
 abstract_route_t* get_route(int id) {
     //TODO: safety
     return &(route_list[id - route_offset]);
+}
+
+int get_g_start_time() {
+    return g_start_time;
 }
 
 /************ Route Objects *********************/

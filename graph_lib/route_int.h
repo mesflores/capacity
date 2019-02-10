@@ -6,5 +6,6 @@
 abstract_route_t* route_list;
 int g_total_routes;
 int route_offset;
+int g_start_time;
 
 #endif

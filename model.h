@@ -11,6 +11,7 @@
 
 extern int g_num_stations;
 extern int g_num_transit_units;
+extern int g_time_offset;
 
 enum type_vals {
     STATION,
@@ -86,6 +87,7 @@ typedef enum {
 // TU state
 typedef struct {
     transit_unit_sm curr_state; // Some kind of state machine?
+    int start; // time to start
     int station; // GID of current station
     int route_index; // Current index in route
     // This should be an array of some kind
