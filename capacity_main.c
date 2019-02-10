@@ -7,6 +7,7 @@
 //includes
 #include "ross.h"
 #include "graph_lib/graph.h"
+#include "graph_lib/route.h"
 #include "passenger.h"
 #include "model.h"
 
@@ -57,15 +58,16 @@ int capacity_main (int argc, char* argv[]) {
 	int num_lps_per_pe;
     
     int total_nodes;
-    int station_count;
 
 	tw_opt_add(model_opts);
 	tw_init(&argc, &argv);
 
     // Init the global vars
     graph_init();
-    station_count = get_station_count();
-    
+    init_global_routes();
+      
+
+
 	//Do some error checking?
 	//Print out some settings?
 
@@ -88,17 +90,18 @@ int capacity_main (int argc, char* argv[]) {
 	// g_tw_synchronization_protocol
 
     // Set the two globals for the number of stations and stuff
-    g_num_stations = station_count;
-
-    g_num_transit_units = 1;
+    g_num_stations = get_station_count();
+    // TODO: These should not map 1 to 1, but for now they do for simplicity
+    g_num_transit_units = get_route_count();
+    set_route_offset(g_num_stations);
 
 	//Given our total number of PEs figure out how many LPs should go to each
     total_nodes = tw_nnodes();
-    if ((station_count % total_nodes) != 0) {
+    if ((g_num_stations % total_nodes) != 0) {
         printf("Number of LPs must be divisible by nodes. (Stupid but ok)\n");
         return -1;
     }
-	num_lps_per_pe = station_count / total_nodes;
+	num_lps_per_pe = g_num_stations / total_nodes;
     num_lps_per_pe += g_num_transit_units;
 
 

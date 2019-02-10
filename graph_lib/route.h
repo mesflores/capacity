@@ -14,6 +14,9 @@ typedef struct abstract_route_t {
 
 void init_global_routes();
 void print_global_routes();
+void set_route_offset(int offset);
+int get_route_count();
+abstract_route_t* get_route(int id);
 
 
 /************ TU Route Data *************/

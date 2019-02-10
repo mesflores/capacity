@@ -6,10 +6,10 @@
 #include <stdio.h>
 
 #include "ross.h"
-#include "graph_lib/route.h"
 #include "passenger.h"
 #include "model.h"
 #include "graph_lib/graph.h"
+#include "graph_lib/route.h"
 
 
 //Init function
@@ -26,8 +26,10 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
     s->route_index = 0;
 
     // Go ahead and init the route
-    char* steps[] = {"80122","80121", "80123", "80124", "80125", "80126", "80127", "80128"};
-    s->route = init_route(steps, 8);
+    abstract_route_t* my_route = get_route(self);
+
+    printf("LEN: %d\n", my_route->length);
+    s->route = init_route(my_route->stops, my_route->length);
 
     s->pass_list = NULL;
     s->pass_count = 0;

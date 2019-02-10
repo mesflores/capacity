@@ -36,7 +36,7 @@ void init_global_routes() {
     int i;
 
     // TODO: Add the path as a proper arg
-    FILE* dat_file = fopen("/home/marcel/capacity/dat/routes.dat.max", "r"); 
+    FILE* dat_file = fopen("/home/marcel/capacity/dat/routes.dat", "r"); 
     if (dat_file == NULL) {
         perror("Failed to open file!");
         exit(-1);
@@ -64,7 +64,6 @@ void init_global_routes() {
             start_time = atoi(line);
             continue;
         }
-        printf("%s", line);
         // Otherwise it's time to read the route itself!
         // Strip the newline
         newline = strchr(line, '\n');
@@ -94,7 +93,7 @@ void init_global_routes() {
         (route_list[curr_route]).stops = (char**)calloc(stop_counter +1, sizeof(char*));
         for(i=0; i < stop_counter+1; i++) {
             // Make some space for that name 
-            (route_list[curr_route]).stops[i] = (char *)calloc(strlen(stops[i]), sizeof(char)); 
+            (route_list[curr_route]).stops[i] = (char *)calloc(strlen(stops[i]) + 1, sizeof(char)); 
             // Copy it
             strcpy((route_list[curr_route]).stops[i], stops[i]);
         }
@@ -130,6 +129,18 @@ void print_global_routes() {
     return;
 }
 
+void  set_route_offset(int offset) {
+    route_offset = offset;
+}
+
+int get_route_count() {
+    return g_total_routes;
+}
+
+abstract_route_t* get_route(int id) {
+    //TODO: safety
+    return &(route_list[id - route_offset]);
+}
 
 /************ Route Objects *********************/
 
