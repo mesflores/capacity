@@ -9,7 +9,7 @@
 #include "ross.h"
 #include "passenger.h"
 #include "model.h"
-#include "graph_lib/graph.h"
+#include "graph.h"
 
 //Helper Functions
 void SWAP (int *a, int *b) {
