@@ -22,6 +22,17 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake/Modules/")
 SET(capacity_srcs
     cap_definitions.h
 	capacity_main.c
+    passenger.h
+    passenger.c
+    transit_unit.c
+	station.c
+    model.h
+    model_mapping.c
+	model_config.h
+)
+
+# Internal lib stuff
+SET(capacity_libs
     graph.h
     graph_int.h
     graph.c
@@ -30,13 +41,6 @@ SET(capacity_srcs
     route.h
     route.c
     route_int.h
-    passenger.h
-    passenger.c
-    transit_unit.c
-	station.c
-    model.h
-    model_mapping.c
-	model_config.h
 )
 
 # For the tests
@@ -54,13 +58,14 @@ set(LIBS ${IGRAPH_LIBRARIES})
 
 # Set the executable name here: model
 # You will be executing the ./model binary
-ADD_EXECUTABLE(capacity-r ${capacity_srcs})
+ADD_EXECUTABLE(capacity-r ${capacity_srcs} ${capacity_libs})
 TARGET_LINK_LIBRARIES(capacity-r ROSS m ${LIBS})
 
-ADD_EXECUTABLE(test_exe ${test_src})
-TARGET_LINK_LIBRARIES(test_exe m)
+ADD_EXECUTABLE(test_exe ${test_src} ${capacity_libs})
+TARGET_LINK_LIBRARIES(test_exe ROSS m ${LIBS})
 ## Alternatively, use this command with RIO
 #TARGET_LINK_LIBRARIES(model ROSS RIO m)
 
 # Add some tests
+add_definitions(-DTEST_DATA_PATH=${CMAKE_CURRENT_SOURCE_DIR}/test_data/)
 ADD_TEST(NAME capacity_test COMMAND test_exe)
