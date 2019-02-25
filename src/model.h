@@ -39,6 +39,7 @@ typedef enum {
 typedef struct {
     message_type type;
     tw_lpid source;
+    int prev_station;
     short more; //For P_ messages, are there more coming?
     passenger_t curr_pass;
 } message;
@@ -54,12 +55,29 @@ typedef enum {
     ST_BOARDING, // Loading passengers onto the TU
 } station_sm; //SM - state machine, not full state
 
+// Wraps up the track state
+typedef struct {
+    station_sm inbound;
+    station_sm outbound;
+   
+    // Inbound queue
+    unsigned short queued_tu_present;
+    tw_lpid queued_tu;
+
+} track_t;
+
 typedef struct {
     char station_name[25]; // Identifier name for station TODO FIX SIZE
 
-    station_sm curr_state; // What state is it in right now?
-    unsigned short queued_tu_present; // Anything in the queue?
-    tw_lpid queued_tu; // The TU queued up. TODO: For now a single int, should get expanded
+    //station_sm curr_state; // What state is it in right now?
+
+    // The left track is where the station ID of the adjacent station is less
+    // The righttrack is where the station ID of the adjacent station is less
+    track_t left;
+    track_t right;
+
+    //unsigned short queued_tu_present; // Anything in the queue?
+    //tw_lpid queued_tu; // The TU queued up. TODO: For now a single int, should get expanded
 
     passenger_t* pass_list; //Passenger linked list
 } station_state;
@@ -91,6 +109,7 @@ typedef enum {
 typedef struct {
     transit_unit_sm curr_state; // Some kind of state machine?
     int start; // time to start
+    int prev_station; // GID of previous station
     int station; // GID of current station
     int route_index; // Current index in route
     // This should be an array of some kind

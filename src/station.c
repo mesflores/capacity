@@ -18,6 +18,21 @@ void SWAP (int *a, int *b) {
     *b = tmp;
 }
 
+// Map to a left or right track
+track_t* track_map(int curr_station, int prev_station, station_state* s) {
+    // Left
+    if (prev_station < curr_station) {
+        return &(s->left); 
+        // Right
+    } else if (prev_station > curr_station) {
+        return &(s->right);
+        // This is basically an assert...
+    } else {
+        printf("Invalid matching stations: curr: %d prev: %d\n", curr_station, prev_station);
+        exit(-1);
+    }
+}
+
 //Init function
 // - called once for each LP
 // ! LP can only send messages to itself during init !
@@ -25,9 +40,15 @@ void station_init (station_state *s, tw_lp *lp) {
     int self = lp->gid;
 
     // init state data
-    s->curr_state = ST_EMPTY; // Stations start empty
-    s->queued_tu_present = 0;
-    s->queued_tu = 0;
+    s->left.inbound = ST_EMPTY; 
+    s->left.outbound = ST_EMPTY; 
+    s->left.queued_tu_present = 0;
+    s->left.queued_tu = 0;
+
+    s->right.inbound = ST_EMPTY; 
+    s->right.outbound = ST_EMPTY; 
+    s->right.queued_tu_present = 0;
+    s->right.queued_tu = 0;
 
     // Lookup the name
     memset(s->station_name, 0, 25); //TODO: Fix this size
@@ -53,6 +74,8 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     int dest;
     int curr_global;
 
+    track_t* curr_track;
+
     // initialize the bit field
     // TODO: Understand what these are for...
     *(int *) bf = (int) 0;
@@ -60,6 +83,9 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     // update the current state
     // however, save the old value in the 'reverse' message
     // SWAP(&(s->last_arr), &(in_msg->passenger_count));
+
+    // Look up what track the message came from
+    curr_track = track_map(self, in_msg->prev_station, s);
 
     // handle the message
     switch (in_msg->type) {
@@ -94,17 +120,17 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             tw_output(lp, "[%.3f] ST %d: Train %d arriving at %s!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self));
           
             // First, check to see what our state is
-            if ((s->curr_state == ST_OCCUPIED) || (s->curr_state == ST_BOARDING)) {
+            if ((curr_track->inbound == ST_OCCUPIED) || (curr_track->inbound == ST_BOARDING)) {
                 // If we are currently occupied, put the TU in the queue for 
                 // notification when the state transitions to empty
                 // Was anybody queued? if so hard error
-                if (s->queued_tu_present > 0) {
+                if (curr_track->queued_tu_present > 0) {
                     printf("NOT IMPLEMENTED: proper station queues!\n");
                     exit(-1);
                 }
                 // Otherwise, queue it up
-                s->queued_tu_present = 1;
-                s->queued_tu = in_msg->source;
+                curr_track->queued_tu_present = 1;
+                curr_track->queued_tu = in_msg->source;
                 tw_output(lp, "[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source); 
 
             } else {
@@ -118,7 +144,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 tw_output(lp, "[%.3f] ST %d: Sending ack message to %d!\n", tw_now(lp), self, in_msg->source);
                 tw_event_send(e);
                
-                s->curr_state = ST_OCCUPIED;
+                curr_track->inbound = ST_OCCUPIED;
             }
 
             break;
@@ -170,7 +196,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             message *msg = tw_event_data(e);
             msg->type = P_COMPLETE;
             msg->source = self;
-            tw_output(lp, "[%.3f] ST %d: Sending boarding complete message to %d!\n", tw_now(lp), self, in_msg->source);
+            //tw_output(lp, "[%.3f] ST %d: Sending boarding complete message to %d!\n", tw_now(lp), self, in_msg->source);
             tw_event_send(e);
         
             break;
@@ -198,24 +224,24 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             */
 
             // Go ahead and ack a queued train if there is one
-            if (s->queued_tu_present > 0) {
-                tw_event *e = tw_event_new(s->queued_tu, CONTROL_EPOCH, lp);
+            if (curr_track->queued_tu_present > 0) {
+                tw_event *e = tw_event_new(curr_track->queued_tu, CONTROL_EPOCH, lp);
                 message *msg = tw_event_data(e);
                 // Station says its ok
                 msg->type = ST_ACK;
                 // All these passengers got on here I guess
                 msg->source = self;
-                tw_output(lp, "[%.3f] ST %d: Sending ack message to %d!\n", tw_now(lp), self, in_msg->source);
+                tw_output(lp, "[%.3f] ST %d: Sending ack message to queued TU %d!\n", tw_now(lp), self, curr_track->queued_tu);
                 tw_event_send(e);
               
                 // Bump to occupied, continue
-                s->curr_state = ST_OCCUPIED;
+                curr_track->inbound = ST_OCCUPIED;
                 // Clear out the queue
-                s->queued_tu_present = 0;
-                s->queued_tu = 0;
+                curr_track->queued_tu_present = 0;
+                curr_track->queued_tu = 0;
             } else {
                 // Nothing waiting, just go back to empty
-                s->curr_state = ST_EMPTY;
+                curr_track->inbound = ST_EMPTY;
             }
 
             break;

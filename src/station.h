@@ -29,7 +29,9 @@ extern tw_lptype station_lps[];
 
 //Function Declarations
 // defined in station.c:
-extern void station_init(state *s, tw_lp *lp);
+track_t track_map(int curr_station, int prev_station);
+
+extern void station_init(state *s, tw_lp *lp, satation_state *s);
 extern void station_event(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void station_event_reverse(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void station_final(state *s, tw_lp *lp);
