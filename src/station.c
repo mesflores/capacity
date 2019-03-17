@@ -44,11 +44,13 @@ void station_init (station_state *s, tw_lp *lp) {
     s->left.outbound = ST_EMPTY; 
     s->left.queued_tu_present = 0;
     s->left.queued_tu = 0;
+    s->left.next_arrival = 0;
 
     s->right.inbound = ST_EMPTY; 
     s->right.outbound = ST_EMPTY; 
     s->right.queued_tu_present = 0;
     s->right.queued_tu = 0;
+    s->right.next_arrival = 0;
 
     // Lookup the name
     memset(s->station_name, 0, 25); //TODO: Fix this size
@@ -141,6 +143,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 msg->type = ST_ACK;
                 // All these passengers got on here I guess
                 msg->source = self;
+                msg->next_arrival = curr_track->next_arrival;
                 tw_output(lp, "[%.3f] ST %d: Sending ack message to %d!\n", tw_now(lp), self, in_msg->source);
                 tw_event_send(e);
                
@@ -222,6 +225,10 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             // Ship it off!
             tw_event_send(e);
             */
+
+            // Log the next arrival time
+            curr_track->next_arrival = in_msg->next_arrival;
+
 
             // Go ahead and ack a queued train if there is one
             if (curr_track->queued_tu_present > 0) {

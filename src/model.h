@@ -41,6 +41,8 @@ typedef struct {
     tw_lpid source;
     int prev_station;
     short more; //For P_ messages, are there more coming?
+    int next_arrival; // ST_ACK - the time the previous departing train will reach the next station
+                      // TRAIN_DEPART - the time the train will reach the next station
     passenger_t curr_pass;
 } message;
 
@@ -63,6 +65,10 @@ typedef struct {
     // Inbound queue
     unsigned short queued_tu_present;
     tw_lpid queued_tu;
+
+    // Outbound queue
+    // This really represents the space between thestations`
+    int next_arrival;
 
 } track_t;
 
@@ -118,6 +124,8 @@ typedef struct {
     // for now, a big stupid linked list
     passenger_t* pass_list; //Passenger linked list
     int pass_count;
+
+    int min_time; // the minimum arrival time at next station
 } tu_state;
 
 //Function Declarations

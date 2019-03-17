@@ -130,6 +130,11 @@ void graph_init(const char* matrix_fn) {
     //print(g_graph); 
 
     g_station_count = dimension;
+
+    // Dump the graph
+    //FILE* o_file = fopen("dot_file", "w");
+    //igraph_write_graph_dot(g_graph, o_file);
+
 }
 
 void graph_destroy() {

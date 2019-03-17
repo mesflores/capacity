@@ -85,6 +85,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             // Save the previous station
             s->prev_station = s->station;
             s->station = in_msg->source;
+            s->min_time = in_msg->next_arrival;
 
             // TODO: Send messages to station to empty passengers
 
@@ -104,18 +105,6 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
         }
         case P_COMPLETE : {
             // station is all done boarding 
-            // Ok all done go ahead and depart
-            tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
-            message *msg = tw_event_data(e);
-            msg->type = TRAIN_DEPART;
-            msg->source = self;
-            msg->prev_station = s->prev_station;
-            tw_output(lp, "[%.3f] TU %d: Sending depart to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
-            tw_event_send(e);
-
-            // Not at that station anymore
-            // We actually want to use this, not going to zero it out yet
-            //s->station = -1;
 
             // Ok tell the next station that we are on our way 
             next_station = get_next(s->route, &(s->route_index));
@@ -126,9 +115,27 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             }
             // Bump the routeindex
             s->route_index += 1;
-
             // Time it takes to get to the next station
             delay = get_delay_id(in_msg->source, next_station);
+            // Actually its possible somebody ahead of us was delayed, check the min time
+            if (delay < (s->min_time - tw_now(lp))) {
+                delay = s->min_time - tw_now(lp) + 1; // TODO: Controllable
+                tw_output(lp, "[%.3f] TU %d: Incurred cascading delay!\n", tw_now(lp), self);
+            }
+
+            // Ok all done go ahead and depart
+            tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
+            message *msg = tw_event_data(e);
+            msg->type = TRAIN_DEPART;
+            msg->source = self;
+            msg->prev_station = s->prev_station;
+            msg->next_arrival = tw_now(lp) + delay;
+            tw_output(lp, "[%.3f] TU %d: Sending depart to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
+            tw_event_send(e);
+
+            // Not at that station anymore
+            // We actually want to use this, not going to zero it out yet
+            //s->station = -1;
 
             // Send it an approach message
             tw_event *approach = tw_event_new(next_station, delay, lp);
