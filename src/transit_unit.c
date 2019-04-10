@@ -95,7 +95,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             msg->type = TRAIN_BOARD;
             msg->prev_station = s->prev_station;
             msg->source = self;
-            //tw_output(lp, "[%.3f] TU %d: Sending alighting complete to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
+            tw_output(lp, "[%.3f] TU %d: Sending alighting complete to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             tw_event_send(e);
 
             // Train is now accepting boarding passengers
@@ -108,19 +108,17 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
             // Ok tell the next station that we are on our way 
             next_station = get_next(s->route, &(s->route_index));
-            // Actually we were at the end
-            if (next_station == -1) {
-                // TODO: is there a better way to terminate?
-                break;
-            }
-            // Bump the routeindex
-            s->route_index += 1;
-            // Time it takes to get to the next station
-            delay = get_delay_id(in_msg->source, next_station);
-            // Actually its possible somebody ahead of us was delayed, check the min time
-            if (delay < (s->min_time - tw_now(lp))) {
-                delay = s->min_time - tw_now(lp) + 1; // TODO: Controllable
-                tw_output(lp, "[%.3f] TU %d: Incurred cascading delay!\n", tw_now(lp), self);
+
+            if (next_station != -1) {
+                // Bump the routeindex
+                s->route_index += 1;
+                // Time it takes to get to the next station
+                delay = get_delay_id(in_msg->source, next_station);
+                // Actually its possible somebody ahead of us was delayed, check the min time
+                if (delay < (s->min_time - tw_now(lp))) {
+                    delay = s->min_time - tw_now(lp) + 1; // TODO: Controllable
+                    tw_output(lp, "[%.3f] TU %d: Incurred cascading delay!\n", tw_now(lp), self);
+                }
             }
 
             // Ok all done go ahead and depart
@@ -129,9 +127,22 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             msg->type = TRAIN_DEPART;
             msg->source = self;
             msg->prev_station = s->prev_station;
-            msg->next_arrival = tw_now(lp) + delay;
+            // If we arent going anywhere just 0 this
+            if (next_station == -1) {
+                msg->next_arrival = 0;
+            }
+            else {
+                msg->next_arrival = tw_now(lp) + delay;
+            }
             tw_output(lp, "[%.3f] TU %d: Sending depart to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             tw_event_send(e);
+
+            // Actually we were at the end, so just bail
+            if (next_station == -1) {
+                // TODO: is there a better way to terminate?
+                // We do need to tell the last station that we left
+                break;
+            }
 
             // Not at that station anymore
             // We actually want to use this, not going to zero it out yet

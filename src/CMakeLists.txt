@@ -58,8 +58,8 @@ set(LIBS ${IGRAPH_LIBRARIES})
 
 # Set the executable name here: model
 # You will be executing the ./model binary
-ADD_EXECUTABLE(capacity-r ${capacity_srcs} ${capacity_libs})
-TARGET_LINK_LIBRARIES(capacity-r ROSS m ${LIBS})
+ADD_EXECUTABLE(capacity ${capacity_srcs} ${capacity_libs})
+TARGET_LINK_LIBRARIES(capacity ROSS m ${LIBS})
 
 ADD_EXECUTABLE(test_exe ${test_src} ${capacity_libs})
 TARGET_LINK_LIBRARIES(test_exe ROSS m ${LIBS})

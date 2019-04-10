@@ -127,7 +127,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // notification when the state transitions to empty
                 // Was anybody queued? if so hard error
                 if (curr_track->queued_tu_present > 0) {
-                    printf("NOT IMPLEMENTED: proper station queues!\n");
+                    printf("[%.3f] NOT IMPLEMENTED: proper station queues! ST: %d TU: %lu\n", tw_now(lp), self, in_msg->source);
                     exit(-1);
                 }
                 // Otherwise, queue it up
@@ -199,7 +199,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             message *msg = tw_event_data(e);
             msg->type = P_COMPLETE;
             msg->source = self;
-            //tw_output(lp, "[%.3f] ST %d: Sending boarding complete message to %d!\n", tw_now(lp), self, in_msg->source);
+            tw_output(lp, "[%.3f] ST %d: Sending boarding complete message to %d!\n", tw_now(lp), self, in_msg->source);
             tw_event_send(e);
         
             break;
@@ -266,7 +266,24 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     int self = lp->gid;
 
+    track_t* curr_track;
 
+    // Look up what track the message came from
+    // Is this ok
+    curr_track = track_map(self, in_msg->prev_station, s);
+
+    switch (in_msg->type) {
+        case P_ARRIVE : {
+            // TODO: doesn't do anything right now, so the reverse is easy?
+            break;
+        }
+        case TRAIN_ARRIVE : {
+
+            break;
+        }
+        default :
+            printf("Station Unhandled reverse message type %d\n", in_msg->type);
+    }
     /*
     // undo the state update using the value stored in the 'reverse' message
     SWAP(&(s->last_arr), &(in_msg->passenger_count));
