@@ -66,7 +66,6 @@ void station_init (station_state *s, tw_lp *lp) {
         msg->source= self;
         tw_event_send(e);
     }
-
 }
 
 

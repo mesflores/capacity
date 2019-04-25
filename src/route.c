@@ -151,6 +151,12 @@ route_t* init_route(char** steps, int len) {
     route_t* route_obj;
     int i;
 
+    printf("Route len: %d\n", len);
+
+    if (len == 0) {
+        perror("Invalid route length!\n");
+    }
+
     // Alloate the route struc itself
     route_obj = tw_calloc(TW_LOC, "init_route", sizeof(route_t), 1);
     // ok, now allocate and copy the steps

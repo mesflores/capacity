@@ -107,12 +107,9 @@ int capacity_main (int argc, char* argv[]) {
 
 	//Given our total number of PEs figure out how many LPs should go to each
     total_nodes = tw_nnodes();
-    if ((g_num_stations % total_nodes) != 0) {
-        printf("Number of LPs must be divisible by nodes. (Stupid but ok)\n");
-        return -1;
-    }
-	num_lps_per_pe = g_num_stations / total_nodes;
-    num_lps_per_pe += g_num_transit_units;
+
+    // The idea here is to spread the stations evenly over the LPs
+    num_lps_per_pe = (int)ceil((double)(g_num_stations + g_num_transit_units) / (double)total_nodes);
 
 
 	//set up LPs within ROSS
@@ -126,11 +123,9 @@ int capacity_main (int argc, char* argv[]) {
 	// set the global variable and initialize each LP's type
 	g_tw_lp_types = model_lps;
 
-
 	tw_lp_setup_types();
 
 	// Do some file I/O here? on a per-node (not per-LP) basis
-
 	tw_run();
 
 	tw_end();

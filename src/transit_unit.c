@@ -18,6 +18,16 @@
 void transit_unit_init (tu_state *s, tw_lp *lp) {
     int self = lp->gid;
 
+    // Do we want to init this even?
+    if (self >= (g_num_stations + g_num_transit_units)) {
+        // It's not a real train, do nothing
+        //
+        // Not sure if this is the best way to handle this, but basically,
+        // since we need an equal number of LPs per PE, this just fills it out.
+        return;
+    }
+
+
     // Init the train state
     // TODO: At some point schedule initialization will be a complicated question
     s->curr_state = TU_IDLE; // Starts nowhere
@@ -39,6 +49,14 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
 //Pre-run handler
 void transit_unit_pre_run (tu_state *s, tw_lp *lp) {
     int self = lp->gid;
+
+    // Need to do this again, or the pre run handler will eat it
+    if (self >= (g_num_stations + g_num_transit_units)) {
+        // Not sure if this is the best way to handle this, but basically,
+        // since we need an equal number of LPs per PE, this just fills it out.
+        return;
+    }
+
 
     // Send an approach message to the first station on the schedule
     tw_event *e = tw_event_new(s->route->origin, s->start, lp);
