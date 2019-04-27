@@ -17,6 +17,11 @@ void SWAP (int *a, int *b) {
     *a = *b;
     *b = tmp;
 }
+void SWAP_SHORT (short *a, short *b) {
+    short tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
 
 // Map to a left or right track
 track_t* track_map(int curr_station, int prev_station, station_state* s) {
@@ -42,15 +47,19 @@ void station_init (station_state *s, tw_lp *lp) {
     // init state data
     s->left.inbound = ST_EMPTY; 
     s->left.outbound = ST_EMPTY; 
+    s->left.curr_tu = 0;
     s->left.queued_tu_present = 0;
     s->left.queued_tu = 0;
     s->left.next_arrival = 0;
+    s->left.from_queue = 0;
 
     s->right.inbound = ST_EMPTY; 
     s->right.outbound = ST_EMPTY; 
+    s->right.curr_tu = 0;
     s->right.queued_tu_present = 0;
     s->right.queued_tu = 0;
     s->right.next_arrival = 0;
+    s->right.from_queue = 0;
 
     // Lookup the name
     memset(s->station_name, 0, 25); //TODO: Fix this size
@@ -147,6 +156,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 tw_event_send(e);
                
                 curr_track->inbound = ST_OCCUPIED;
+                curr_track->curr_tu = in_msg->source;
             }
 
             break;
@@ -226,8 +236,11 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             */
 
             // Log the next arrival time
-            curr_track->next_arrival = in_msg->next_arrival;
+            //curr_track->next_arrival = in_msg->next_arrival;
+            SWAP(&(curr_track->next_arrival), &(in_msg->next_arrival));
 
+            //stash the current from_queue status
+            SWAP_SHORT(&(curr_track->from_queue), &(in_msg->from_queue));
 
             // Go ahead and ack a queued train if there is one
             if (curr_track->queued_tu_present > 0) {
@@ -242,12 +255,18 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
               
                 // Bump to occupied, continue
                 curr_track->inbound = ST_OCCUPIED;
+                curr_track->curr_tu = curr_track->queued_tu;
+
                 // Clear out the queue
                 curr_track->queued_tu_present = 0;
                 curr_track->queued_tu = 0;
+                // Label it as being from the queue
+                curr_track->from_queue = 1;
             } else {
                 // Nothing waiting, just go back to empty
                 curr_track->inbound = ST_EMPTY;
+                curr_track->curr_tu = 0;
+                curr_track->from_queue = 0;
             }
 
             break;
@@ -277,9 +296,45 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
             break;
         }
         case TRAIN_ARRIVE : {
+            // If we had something queued, that means this arrival queued, clear it 
+            if (curr_track->queued_tu_present > 0) {
+                curr_track->queued_tu_present = 0; // In a better world this would decrement
+                curr_track->queued_tu = 0;
+            } else {
+                // This train was in the station
+                curr_track->inbound = ST_EMPTY;
+            }
 
             break;
         }
+        case TRAIN_BOARD : {
+            // TODO: Actually this is blank for now, since receiving
+            // a train_board does nothing but generate a P_COMPLETE
+            break;
+        }
+        case TRAIN_DEPART : {
+            // No matter what, mark track as occupied
+            curr_track->inbound = ST_OCCUPIED;
+            curr_track->curr_tu = in_msg->source;
+            // Was that train every queued?
+            // If so, we need to put them back in the queue, otherwise, nothing
+            if (curr_track->from_queue == 1) {
+                curr_track->queued_tu_present = 1;
+                // Put the one thats on the track now back
+                curr_track->queued_tu = curr_track->curr_tu;
+                 
+
+            }
+
+            // TODO XXX: we actually need to reset 'from_queue' back to what it was
+            SWAP_SHORT(&(curr_track->from_queue), &(in_msg->from_queue));
+
+            // Reset next_arrival
+            SWAP(&(curr_track->next_arrival), &(in_msg->next_arrival));
+
+            break;
+        }
+
         default :
             printf("Station Unhandled reverse message type %d\n", in_msg->type);
     }

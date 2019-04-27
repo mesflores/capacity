@@ -43,6 +43,7 @@ typedef struct {
     short more; //For P_ messages, are there more coming?
     int next_arrival; // ST_ACK - the time the previous departing train will reach the next station
                       // TRAIN_DEPART - the time the train will reach the next station
+    short from_queue; 
     passenger_t curr_pass;
 } message;
 
@@ -61,14 +62,18 @@ typedef enum {
 typedef struct {
     station_sm inbound;
     station_sm outbound;
-   
+
+    tw_lpid curr_tu; // who is on the track now
+
     // Inbound queue
     unsigned short queued_tu_present;
     tw_lpid queued_tu;
 
     // Outbound queue
-    // This really represents the space between thestations`
+    // This really represents the space between the stations`
     int next_arrival;
+
+    short from_queue;
 
 } track_t;
 
