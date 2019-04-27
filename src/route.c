@@ -151,8 +151,6 @@ route_t* init_route(char** steps, int len) {
     route_t* route_obj;
     int i;
 
-    printf("Route len: %d\n", len);
-
     if (len == 0) {
         perror("Invalid route length!\n");
     }
