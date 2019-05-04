@@ -7,6 +7,8 @@
 
 #define CONTROL_EPOCH .006
 
+extern void SWAP (int *a, int *b);
+
 /********* Shared components across LPs *****/
 
 extern int g_num_stations;
@@ -62,6 +64,8 @@ typedef enum {
 typedef struct {
     station_sm inbound;
     station_sm outbound;
+    
+    int track_id; // Just an identifier so we can tell them apart
 
     tw_lpid curr_tu; // who is on the track now
 
@@ -120,8 +124,8 @@ typedef enum {
 typedef struct {
     transit_unit_sm curr_state; // Some kind of state machine?
     int start; // time to start
-    int prev_station; // GID of previous station
-    int station; // GID of current station
+    tw_lpid prev_station; // GID of previous station
+    tw_lpid station; // GID of current station
     int route_index; // Current index in route
     // This should be an array of some kind
     struct route_t* route; 
