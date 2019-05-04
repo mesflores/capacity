@@ -45,6 +45,7 @@ void station_init (station_state *s, tw_lp *lp) {
     int self = lp->gid;
 
     // init state data
+    s->left.track_id = 0;
     s->left.inbound = ST_EMPTY; 
     s->left.outbound = ST_EMPTY; 
     s->left.curr_tu = 0;
@@ -53,6 +54,7 @@ void station_init (station_state *s, tw_lp *lp) {
     s->left.next_arrival = 0;
     s->left.from_queue = 0;
 
+    s->right.track_id = 1;
     s->right.inbound = ST_EMPTY; 
     s->right.outbound = ST_EMPTY; 
     s->right.curr_tu = 0;
@@ -152,7 +154,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // All these passengers got on here I guess
                 msg->source = self;
                 msg->next_arrival = curr_track->next_arrival;
-                tw_output(lp, "[%.3f] ST %d: Sending ack message to %d!\n", tw_now(lp), self, in_msg->source);
+                tw_output(lp, "[%.3f] ST %d: Sending ack message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
                 tw_event_send(e);
                
                 curr_track->inbound = ST_OCCUPIED;
@@ -289,13 +291,17 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
     // Look up what track the message came from
     // Is this ok
     curr_track = track_map(self, in_msg->prev_station, s);
+    
+    printf("STA reverse call!\n");
 
     switch (in_msg->type) {
         case P_ARRIVE : {
             // TODO: doesn't do anything right now, so the reverse is easy?
+            printf("STA reverse P_ARRIVE call!\n");
             break;
         }
         case TRAIN_ARRIVE : {
+            printf("STA reverse TRAIN_ARRIVE call!\n");
             // If we had something queued, that means this arrival queued, clear it 
             if (curr_track->queued_tu_present > 0) {
                 curr_track->queued_tu_present = 0; // In a better world this would decrement
@@ -308,11 +314,13 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
             break;
         }
         case TRAIN_BOARD : {
+            printf("STA reverse TRAIN_BOARD call!\n");
             // TODO: Actually this is blank for now, since receiving
             // a train_board does nothing but generate a P_COMPLETE
             break;
         }
         case TRAIN_DEPART : {
+            printf("STA reverse TRAIN_DEPART call!\n");
             // No matter what, mark track as occupied
             curr_track->inbound = ST_OCCUPIED;
             curr_track->curr_tu = in_msg->source;
@@ -356,7 +364,6 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
     // don't forget to undo all rng calls
     tw_rand_reverse_unif(lp->rng);
     */
-    printf("Not Implemented!");
 }
 
 //report any final statistics for this LP

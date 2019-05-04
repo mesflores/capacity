@@ -11,6 +11,12 @@
 #include "graph.h"
 #include "route.h"
 
+//Helper Functions
+void SWAP_UL (unsigned long *a, unsigned long *b) {
+    unsigned long tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
 
 //Init function
 // - called once for each LP
@@ -97,23 +103,29 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     // handle the message
     switch (in_msg->type) {
         case ST_ACK : {
+            tw_output(lp, "[%.3f] TU %d: ACK received from %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             // A station said we are good to go!
             // Go ahead and put yourself in alight mode 
             s->curr_state = TU_ALIGHT; 
             // Save the previous station
-            s->prev_station = s->station;
-            s->station = in_msg->source;
-            s->min_time = in_msg->next_arrival;
+            //s->prev_station = s->station;
+            SWAP_UL(&(s->prev_station), &(s->station));
+            //s->station = in_msg->source;
+            SWAP_UL(&(s->station), &(in_msg->source));
+            
+
+            //s->min_time = in_msg->next_arrival;
+            SWAP(&(s->min_time), &(in_msg->next_arrival));
 
             // TODO: Send messages to station to empty passengers
 
             // For now, no passengers go right to boarding
-            tw_event *e = tw_event_new(in_msg->source, CONTROL_EPOCH, lp);
+            tw_event *e = tw_event_new(s->station, CONTROL_EPOCH, lp);
             message *msg = tw_event_data(e);
             msg->type = TRAIN_BOARD;
             msg->prev_station = s->prev_station;
             msg->source = self;
-            tw_output(lp, "[%.3f] TU %d: Sending alighting complete to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
+            tw_output(lp, "[%.3f] TU %d: Sending alighting complete to %s!\n", tw_now(lp), self, sta_name_lookup(s->station));
             tw_event_send(e);
 
             // Train is now accepting boarding passengers
@@ -123,6 +135,8 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
         }
         case P_COMPLETE : {
             // station is all done boarding 
+
+            s->curr_state = TU_APPROACH;
 
             // Ok tell the next station that we are on our way 
             next_station = get_next(s->route, &(s->route_index));
@@ -159,6 +173,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             if (next_station == -1) {
                 // TODO: is there a better way to terminate?
                 // We do need to tell the last station that we left
+                tw_output(lp, "[%.3f] TU %d:Route ending at STA %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
                 break;
             }
 
@@ -210,6 +225,38 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
 //Reverse Event Handler
 void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
+    int self = lp->gid;
+    switch (in_msg->type) {
+        case ST_ACK : {
+            printf("TU reverse ST_ACK call!\n");
+            //reset to approach
+            s->curr_state = TU_APPROACH;
+
+            // Reset the previous to whatever it was
+            SWAP_UL(&(s->station), &(in_msg->source));
+            // Reset the curr to the previous
+            SWAP_UL(&(s->prev_station), &(s->station));
+
+            //Reset the min time
+            SWAP(&(s->min_time), &(in_msg->next_arrival));
+
+            break;
+        }
+        case P_COMPLETE : {
+            printf("TU reverse P_COMPLETE call!\n");
+            // Actually all P_COMPLETE does in the forward direction is fire
+            // messages off, it never changes its own state.
+            s->curr_state = TU_BOARD;
+            break;
+        }
+        case P_BOARD : {
+            printf("TU reverse P_BOARD call!\n");
+            // TODO: Currently disabled!
+            break;
+        }
+        default :
+            printf("TU %d: Unhandeled reverse message type %d\n", self, in_msg->type);
+    }
     return;
 }
 
