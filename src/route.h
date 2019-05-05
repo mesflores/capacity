@@ -28,6 +28,7 @@ typedef struct route_t {
 
     // Some more meta information
     int origin;
+    int start_dir;
     int terminal;
 } route_t;
 

@@ -70,8 +70,15 @@ void transit_unit_pre_run (tu_state *s, tw_lp *lp) {
     msg->type = TRAIN_ARRIVE;
     // All these passengers got on here I guess
     msg->source = self;
-    msg->prev_station = s->station;
-    tw_output(lp, "[%.3f] TU %d: Sending arrive message to %s\n", tw_now(lp), self, sta_name_lookup(s->route->origin));
+    // For the first stop, we have to give it a direction, to avoid
+    // pathological queuing, so just give it the direction that matches where
+    // it's going by making a fake previous
+    if (s->route->start_dir > 0) {
+        msg->prev_station = s->station - 1;
+    } else {
+        msg->prev_station = s->station + 1;
+    }
+    //tw_output(lp, "[%.3f] TU %d: Sending arrive message to %s\n", tw_now(lp), self, sta_name_lookup(s->route->origin));
     tw_event_send(e);
 
     // Update your own state

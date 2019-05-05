@@ -168,6 +168,7 @@ route_t* init_route(char** steps, int len) {
 
     // Set the origin and terminal based on what we were given
     route_obj->origin = (route_obj->route)[0];
+    route_obj->start_dir = (route_obj->route)[1] - (route_obj->route)[0];
     route_obj->terminal = (route_obj->route)[len-1];
 
     return route_obj;
