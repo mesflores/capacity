@@ -141,10 +141,12 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             // Ok tell the next station that we are on our way 
             next_station = get_next(s->route, &(s->route_index));
 
+            // Bump the routeindex
+            s->route_index += 1;
+
             if (next_station != -1) {
-                // Bump the routeindex
-                s->route_index += 1;
                 // Time it takes to get to the next station
+                printf("Getting delay from %lu to %d\n", in_msg->source, next_station);
                 delay = get_delay_id(in_msg->source, next_station);
                 // Actually its possible somebody ahead of us was delayed, check the min time
                 if (delay < (s->min_time - tw_now(lp))) {
@@ -228,7 +230,7 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
     int self = lp->gid;
     switch (in_msg->type) {
         case ST_ACK : {
-            printf("TU reverse ST_ACK call!\n");
+            printf("TU reverse ST_ACK call for TU %d!\n", self);
             //reset to approach
             s->curr_state = TU_APPROACH;
 
@@ -244,8 +246,7 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
         }
         case P_COMPLETE : {
             printf("TU reverse P_COMPLETE call!\n");
-            // Actually all P_COMPLETE does in the forward direction is fire
-            // messages off, it never changes its own state.
+            s->route_index -= 1;
             s->curr_state = TU_BOARD;
             break;
         }
