@@ -64,7 +64,8 @@ further complications, for the way I'm managing the state machines in general.
 
 In it's current state, I've been validating the output of the optimistic
 execution by running each version in three modes:
-1, A single process (i.e. just running the model directly)
+
+1. A single process (i.e. just running the model directly)
 2. A parallel execution running in conservative mode (synch=2)
 3. A parallel execution running in optimistic mode (synch=3)
 
