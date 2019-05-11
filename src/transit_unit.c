@@ -38,9 +38,6 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
     // TODO: At some point schedule initialization will be a complicated question
     s->curr_state = TU_IDLE; // Starts nowhere
 
-    s->prev_station = -1;
-    s->station = -1; // XXX I dunno, we'll figure it out XXX
-    s->route_index = 0;
 
     // Go ahead and init the route
     abstract_route_t* my_route = get_route(self);
@@ -48,6 +45,17 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
     s->start = my_route->start_time - g_time_offset;
     s->pass_list = NULL;
     s->pass_count = 0;
+
+    // For the first stop, we have to give it a direction, to avoid
+    // pathological queuing, so just give it the direction that matches where
+    // it's going by making a fake previous
+    if (s->route->start_dir > 0) {
+        s->prev_station = s->route->origin - 1;
+    } else {
+        s->prev_station = s->route->origin + 1;
+    }
+    s->station = s->prev_station; // just set the the same 
+    s->route_index = 0;
 
     return;
 }
@@ -70,14 +78,7 @@ void transit_unit_pre_run (tu_state *s, tw_lp *lp) {
     msg->type = TRAIN_ARRIVE;
     // All these passengers got on here I guess
     msg->source = self;
-    // For the first stop, we have to give it a direction, to avoid
-    // pathological queuing, so just give it the direction that matches where
-    // it's going by making a fake previous
-    if (s->route->start_dir > 0) {
-        msg->prev_station = s->station - 1;
-    } else {
-        msg->prev_station = s->station + 1;
-    }
+    msg->prev_station = s->prev_station;
     //tw_output(lp, "[%.3f] TU %d: Sending arrive message to %s\n", tw_now(lp), self, sta_name_lookup(s->route->origin));
     tw_event_send(e);
 
@@ -236,7 +237,6 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
     int self = lp->gid;
     switch (in_msg->type) {
         case ST_ACK : {
-            //printf("TU reverse ST_ACK call for TU %d!\n", self);
             //reset to approach
             s->curr_state = TU_APPROACH;
 
@@ -251,13 +251,11 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
             break;
         }
         case P_COMPLETE : {
-            //printf("TU reverse P_COMPLETE call!\n");
             s->route_index -= 1;
             s->curr_state = TU_BOARD;
             break;
         }
         case P_BOARD : {
-            //printf("TU reverse P_BOARD call!\n");
             // TODO: Currently disabled!
             break;
         }

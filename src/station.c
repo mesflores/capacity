@@ -39,6 +39,19 @@ track_t* track_map(int curr_station, int prev_station, station_state* s) {
         exit(-1);
     }
 }
+track_t* track_map_rev(int curr_station, int prev_station, station_state* s, message *in_msg) {
+    // Left
+    if (prev_station < curr_station) {
+        return &(s->left); 
+        // Right
+    } else if (prev_station > curr_station) {
+        return &(s->right);
+        // This is basically an assert...
+    } else {
+        printf("Invalid matching stations: curr: %d prev: %d, state %d\n", curr_station, prev_station, in_msg->type);
+        exit(-1);
+    }
+}
 
 // Queue management 
 int add_train(tw_lpid new_train, track_t* track) {
@@ -48,7 +61,7 @@ int add_train(tw_lpid new_train, track_t* track) {
     int index = track->queued_tu_present;
 
     // Sanity check that it hasn't filled up
-    if (index - 1  > QUEUE_LEN) {
+    if (index >= QUEUE_LEN - 1) {
         printf("Station queue exceeded!\n");
         exit(-1);
     }
@@ -129,6 +142,8 @@ void station_init (station_state *s, tw_lp *lp) {
     s->right.next_arrival = 0;
     s->right.from_queue = 0;
 
+    s->pass_list = 0;
+
     // Lookup the name
     memset(s->station_name, 0, 25); //TODO: Fix this size
     sta_name_copy(s->station_name, self);
@@ -195,28 +210,19 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             break;
         }
         case TRAIN_ARRIVE : {
-            tw_output(lp, "[%.3f] ST %d: Train %d arriving at %s!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self));
-          
+            tw_output(lp, "[%.3f] ST %d: Train %d arriving at %s on track %d!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
+         
+
+
             // First, check to see what our state is
             if ((curr_track->inbound == ST_OCCUPIED) || (curr_track->inbound == ST_BOARDING)) {
                 // If we are currently occupied, put the TU in the queue for 
                 // notification when the state transitions to empty
-                add_train(in_msg->source, curr_track); 
 
-                /*
                 // If we are currently occupied, put the TU in the queue for 
                 // notification when the state transitions to empty
-                // Was anybody queued? if so hard error
-                if (curr_track->queued_tu_present > 0) {
-                    printf("[%.3f] NOT IMPLEMENTED: proper station queues! ST: %d TU: %lu\n", tw_now(lp), self, in_msg->source);
-                    printf("[%.3f] Currently in the track %lu\n", tw_now(lp), curr_track->curr_tu);
-                    printf("[%.3f] Currently in the queue %lu\n", tw_now(lp), (curr_track->queued_tu)[0]);
-                    exit(-1);
-                }
-                // Otherwise, queue it up
-                curr_track->queued_tu_present = 1;
-                (curr_track->queued_tu)[0] = in_msg->source;
-                */
+                add_train(in_msg->source, curr_track); 
+
                 tw_output(lp, "[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source); 
 
             } else {
@@ -284,14 +290,14 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             message *msg = tw_event_data(e);
             msg->type = P_COMPLETE;
             msg->source = self;
-            tw_output(lp, "[%.3f] ST %d: Sending boarding complete message to %d!\n", tw_now(lp), self, in_msg->source);
+            tw_output(lp, "[%.3f] ST %d: Sending boarding complete message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
             tw_event_send(e);
         
             break;
         } 
         case TRAIN_DEPART : {
             tw_lpid curr_tu = 0;
-            tw_output(lp, "[%.3f] ST %d: Train %d Departing %s\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self));
+            tw_output(lp, "[%.3f] ST %d: Train %d Departing %s on track %d\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
             /*
             // Schedule an arrival at the next station
             // This should be safe here, since trains will never depart from a terminal
@@ -320,9 +326,10 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
             // Go ahead and ack a queued train if there is one
             if (curr_track->queued_tu_present > 0) {
+                // Pop a TU off the queue
                 curr_tu = pop_head(curr_track);
+
                 tw_event *e = tw_event_new(curr_tu, CONTROL_EPOCH, lp);
-                //tw_event *e = tw_event_new((curr_track->queued_tu)[0], CONTROL_EPOCH, lp);
                 message *msg = tw_event_data(e);
                 // Station says its ok
                 msg->type = ST_ACK;
@@ -335,12 +342,6 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // Bump to occupied, continue
                 curr_track->inbound = ST_OCCUPIED;
                 curr_track->curr_tu = curr_tu;
-                //curr_track->curr_tu = (curr_track->queued_tu)[0];
-
-                // Don't need this, since queue functions manage
-                // Clear out the queue
-                //curr_track->queued_tu_present = 0;
-                //(curr_track->queued_tu)[0] = 0;
 
                 // Label it as being from the queue
                 curr_track->from_queue = 1;
@@ -367,11 +368,8 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
     int self = lp->gid;
 
     track_t* curr_track;
+    curr_track = track_map_rev(self, in_msg->prev_station, s, in_msg);
 
-    // Look up what track the message came from
-    // Is this ok
-    curr_track = track_map(self, in_msg->prev_station, s);
-    
     switch (in_msg->type) {
         case P_ARRIVE : {
             // TODO: doesn't do anything right now, so the reverse is easy?
@@ -415,7 +413,7 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
 
             }
 
-            // TODO XXX: we actually need to reset 'from_queue' back to what it was
+            // reset 'from_queue' back to what it was
             SWAP_SHORT(&(curr_track->from_queue), &(in_msg->from_queue));
 
             // Reset next_arrival
@@ -427,24 +425,6 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
         default :
             printf("Station Unhandled reverse message type %d\n", in_msg->type);
     }
-    /*
-    // undo the state update using the value stored in the 'reverse' message
-    SWAP(&(s->last_arr), &(in_msg->passenger_count));
-
-    // handle the message
-    switch (in_msg->type) {
-        case TRAIN_ARRIVE:
-            {
-                s->p_arrive -= in_msg->passenger_count;
-                break;
-            }
-        default :
-            printf("Unhandeled reverse message type %d\n", in_msg->type);
-    }
-
-    // don't forget to undo all rng calls
-    tw_rand_reverse_unif(lp->rng);
-    */
 }
 
 //report any final statistics for this LP

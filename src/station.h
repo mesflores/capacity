@@ -30,6 +30,7 @@ extern tw_lptype station_lps[];
 //Function Declarations
 // defined in station.c:
 track_t track_map(int curr_station, int prev_station);
+track_t track_map_rev(int curr_station, int prev_station, message *in_msg);
 
 // Track queue management
 int add_train(tw_lpid new_train, track_t* track); // Add somebody new
