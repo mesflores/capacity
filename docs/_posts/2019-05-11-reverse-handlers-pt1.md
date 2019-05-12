@@ -7,11 +7,9 @@ excerpt_separator: <!--more-->
 
 Over the past few weeks (months?), I've been working on the reverse handlers for the
 Transit Unit and Station state machines. Unsurprisingly, this turns out to be
-quite difficult. While writing a "draft" of the handlers isn't too tricky
+quite difficult. While writing a "draft" of the handlers isn't too hard
 (*i.e.* figuring out what I think I want to do). Turning that into correct
-implementations has proven a little tricker than I expected.  In particular,
-I've faced a couple of challenges that made this trickier than I expected, so
-I thought I'd outline those a bit here.
+implementations has proven a little tricker than I expected. 
 
 <!--more-->
 
