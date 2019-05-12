@@ -52,7 +52,7 @@ earlier implementation, driving the queues in this fashion lead to hard
 crashes. Since the conservative version never hit those failures, I assumed
 this was due to a bug in my reverse handler.
 
-The take away here is no ultimately not surprising: optimistic execution will
+The take away here is ultimately not surprising: optimistic execution will
 happily create scenarios that "can't happen" in the ordinary world. While in
 this case, it was easy enough to manage by improving my queuing system to allow
 for more than one train, I suspect it might spell some trouble, or at least
