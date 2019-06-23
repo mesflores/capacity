@@ -33,7 +33,7 @@ typedef struct route_t {
 } route_t;
 
 route_t* init_route(char** steps, int len);
-int get_next(route_t* route_obj, int* current);
+long int get_next(route_t* route_obj, int* current);
 
 
 

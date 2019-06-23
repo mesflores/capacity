@@ -43,6 +43,7 @@ tw_lptype model_lps[] = {
 int g_num_stations = 10;
 int g_num_transit_units = 0;
 int g_time_offset = 0;
+FILE * node_out_file;
 
 //Intermediate GTFS data
 char g_adj_mat_fn[1024] = "dat/mat.dat";
@@ -72,11 +73,10 @@ int capacity_main (int argc, char* argv[]) {
     // Init the global vars
     graph_init(g_adj_mat_fn);
     init_global_routes(g_routes_fn);
-      
 
-
-	//Do some error checking?
-	//Print out some settings?
+    char debugfilename[100];
+    sprintf(debugfilename, "out_dat/node_%ld_output_file.txt", g_tw_mynode);
+    node_out_file = fopen(debugfilename, "w");
 
 	//Custom Mapping
 	/*

@@ -176,7 +176,7 @@ route_t* init_route(char** steps, int len) {
 
 
 /* Get the next stop along the route */
-int get_next(route_t* route_obj, int* current){
+long int get_next(route_t* route_obj, int* current){
 
     int i;
     int* route;

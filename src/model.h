@@ -12,6 +12,7 @@
 extern void SWAP (int *a, int *b);
 
 /********* Shared components across LPs *****/
+extern FILE * node_out_file;
 
 extern int g_num_stations;
 extern int g_num_transit_units;
