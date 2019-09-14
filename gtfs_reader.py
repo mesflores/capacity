@@ -1,6 +1,7 @@
 #!/usr/local/bin/python3.6
 """ Reads gtfs files and builds a network with them """
 
+import argparse
 import csv
 import datetime
 import logging
@@ -400,19 +401,33 @@ def gen_routes_out(data, outfile):
            out_f.write("\n")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Read GTFS files and generate outputs for Capacity simulator",
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument("gtfs_dir", help="GTFS File Directory")
+    parser.add_argument("-a", "--adjacency", type=str, help="The output adjacency matrix",
+                        default="adj.mat")
+    parser.add_argument("-r", "--routes", type=str, help="The output routes file",
+                        default="routes.dat")
+    args = parser.parse_args()
+
     # Take the directory with the GTFS files
-    data_dir = sys.argv[1]
-    outfile = sys.argv[2]
+    data_dir = args.gtfs_dir
     
     if not os.path.isdir(data_dir):
         raise RuntimeError("Not a directory path!")
 
+    # Configure the log formatter
+    logging.basicConfig(format="%(asctime)s %(levelname)s: %(message)s")
+
     # Load everything
+    print("Loading GTFS data...")
     data = load_gtfs_data(data_dir)
 
     # Dump the adj matrix
-    #gen_matrix_out(data["adj_matrix"], outfile)
+    print("Generating adjacency matrix...")
+    gen_matrix_out(data["adj_matrix"], args.adjacency)
 
+    print("Generating routes file...")
     # Dump the routes themselves
-    gen_routes_out(data, outfile)
+    gen_routes_out(data, args.routes)
 
