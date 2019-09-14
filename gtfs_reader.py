@@ -368,7 +368,7 @@ def gen_matrix_out(adj_matrix, outfile):
             for dst in adj_matrix[src]:
                 out_f.write("%s %s %d\n"%(src, dst, adj_matrix[src][dst]))
 
-def gen_routes_out(data, outfile):
+def gen_routes_out(data, outfile, max_time=0):
     """ Generate route info for runs described in GTFS"""
     with open(outfile, 'w') as out_f:
         # First, let's get the start date 
@@ -390,10 +390,8 @@ def gen_routes_out(data, outfile):
            # Write the start time in epoch
            start_time = int(datetime.datetime.strptime(r[0][1], "%Y%m%d %H:%M:%S").timestamp())
 
-           # XXX XXX XXX XXX XXX XXX
-           if (start_time - min_stamp > 1*(12*60*60)):
+           if (max_time and (start_time - min_stamp > max_time)):
                continue 
-           # XXX XXX XXX XXX XXX XXX
 
            out_f.write("%d\n"%(start_time));
            for stop, s_time in r:
@@ -408,6 +406,7 @@ if __name__ == "__main__":
                         default="adj.mat")
     parser.add_argument("-r", "--routes", type=str, help="The output routes file",
                         default="routes.dat")
+    parser.add_argument("-m", "--max_time", type=int, help="Only generate routes that occur in the first max_time seconds", default=0)
     args = parser.parse_args()
 
     # Take the directory with the GTFS files
@@ -429,5 +428,5 @@ if __name__ == "__main__":
 
     print("Generating routes file...")
     # Dump the routes themselves
-    gen_routes_out(data, args.routes)
+    gen_routes_out(data, args.routes, args.max_time)
 
