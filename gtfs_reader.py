@@ -6,22 +6,6 @@ import csv
 import datetime
 import logging
 import os.path
-import sys
-
-def min_date(data_dir):
-    """ Peak into calendar.txt and pick the minumum date """
-    calendar = os.path.join(data_dir, "calendar.txt")
-    date = []
-    with open(calendar, 'r') as cal_file:
-        reader = csv.reader(cal_file)
-        for line in reader:
-            # TODO: this is bad it should use the columns and find start date etc etc etc
-            start = line[8]
-            if start == "start_date":
-                continue
-            date.append(int(start))
-
-    return str(min(date))
 
 def read_gtfs_files(data_dir):
     """ Read all the files and load them into python dict raw"""
@@ -371,7 +355,7 @@ def gen_matrix_out(adj_matrix, outfile):
 def gen_routes_out(data, outfile, max_time=0):
     """ Generate route info for runs described in GTFS"""
     with open(outfile, 'w') as out_f:
-        # First, let's get the start date 
+        # First, let's get the start date
         min_date = min([y["start_date"] for (x, y) in data["calendar"].items()])
         min_stamp = int(datetime.datetime.strptime(min_date, "%Y%m%d").timestamp())
 
@@ -385,34 +369,36 @@ def gen_routes_out(data, outfile, max_time=0):
 
         out_f.write("%d\n"%(len(full_route_list)))
 
-        for r in full_route_list:
-           # Write the seperator
-           # Write the start time in epoch
-           start_time = int(datetime.datetime.strptime(r[0][1], "%Y%m%d %H:%M:%S").timestamp())
+        for route in full_route_list:
+            # Write the seperator
+            # Write the start time in epoch
+            start_time = int(datetime.datetime.strptime(route[0][1], "%Y%m%d %H:%M:%S").timestamp())
 
-           if (max_time and (start_time - min_stamp > max_time)):
-               continue 
+            if (max_time and (start_time - min_stamp > max_time)):
+                continue
 
-           out_f.write("%d\n"%(start_time));
-           for stop, s_time in r:
-               out_f.write("%s "%stop)
-           out_f.write("\n")
+            out_f.write("%d\n"%(start_time))
+            for stop, s_time in route:
+                out_f.write("%s "%stop)
+            out_f.write("\n")
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Read GTFS files and generate outputs for Capacity simulator",
+    parser = argparse.ArgumentParser(description="Read GTFS files and generate"
+                                     "outputs for Capacity simulator",
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("gtfs_dir", help="GTFS File Directory")
     parser.add_argument("-a", "--adjacency", type=str, help="The output adjacency matrix",
                         default="adj.mat")
     parser.add_argument("-r", "--routes", type=str, help="The output routes file",
                         default="routes.dat")
-    parser.add_argument("-m", "--max_time", type=int, help="Only generate routes that occur in the first max_time seconds", default=0)
+    parser.add_argument("-m", "--max_time", type=int, help="Only generate"
+                        " routes that occur in the first max_time seconds", default=0)
     args = parser.parse_args()
 
     # Take the directory with the GTFS files
-    data_dir = args.gtfs_dir
-    
-    if not os.path.isdir(data_dir):
+    data_dir_arg = args.gtfs_dir
+
+    if not os.path.isdir(data_dir_arg):
         raise RuntimeError("Not a directory path!")
 
     # Configure the log formatter
@@ -420,13 +406,12 @@ if __name__ == "__main__":
 
     # Load everything
     print("Loading GTFS data...")
-    data = load_gtfs_data(data_dir)
+    full_data = load_gtfs_data(data_dir_arg)
 
     # Dump the adj matrix
     print("Generating adjacency matrix...")
-    gen_matrix_out(data["adj_matrix"], args.adjacency)
+    gen_matrix_out(full_data["adj_matrix"], args.adjacency)
 
     print("Generating routes file...")
     # Dump the routes themselves
-    gen_routes_out(data, args.routes, args.max_time)
-
+    gen_routes_out(full_data, args.routes, args.max_time)
