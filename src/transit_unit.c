@@ -125,7 +125,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             current_index = s->route_index - 1;
             next_station = get_next(s->route, &(current_index));
             if (next_station != in_msg->source) {
-                fprintf(node_out_file, "[%ld - %d] Spurious Ack from: %ld (expected %ld), ignoring!\n", g_tw_mynode, self, in_msg->source, next_station);
+                fprintf(node_out_file, "[TU %d] Spurious Ack from: %ld (expected %ld), ignoring!\n", self, in_msg->source, next_station);
                 break;
             }
             
@@ -188,7 +188,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
             if (next_station != -1) {
                 // Time it takes to get to the next station
-                fprintf(node_out_file, "[TU %d] TU P_COMPLETE: Looking up delay from %lu to %ld\n", self, in_msg->source, next_station); 
+                //fprintf(node_out_file, "[TU %d] TU P_COMPLETE: Looking up delay from %lu to %ld\n", self, in_msg->source, next_station); 
                 delay = get_delay_id(in_msg->source, next_station);
                 // Actually its possible somebody ahead of us was delayed, check the min time
                 if (delay < (s->min_time - tw_now(lp))) {

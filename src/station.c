@@ -408,7 +408,7 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
             break;
         }
         case TRAIN_BOARD : {
-            //fprintf(node_out_file, "STA reverse TRAIN_BOARD call!\n");
+            fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_BOARD call from %lu!\n", self, in_msg->source);
             // TODO: Actually this is blank for now, since receiving
             // a train_board does nothing but generate a P_COMPLETE
             break;
