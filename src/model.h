@@ -7,9 +7,12 @@
 
 #define CONTROL_EPOCH .006
 
+#define QUEUE_LEN 50
+
 extern void SWAP (int *a, int *b);
 
 /********* Shared components across LPs *****/
+extern FILE * node_out_file;
 
 extern int g_num_stations;
 extern int g_num_transit_units;
@@ -71,7 +74,7 @@ typedef struct {
 
     // Inbound queue
     unsigned short queued_tu_present;
-    tw_lpid queued_tu;
+    tw_lpid queued_tu[QUEUE_LEN];
 
     // Outbound queue
     // This really represents the space between the stations`
