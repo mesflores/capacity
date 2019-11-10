@@ -150,6 +150,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 msg->source = self;
                 msg->next_arrival = curr_track->next_arrival;
                 tw_output(lp, "[%.3f] ST %d: Sending ack message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
+                fprintf(node_out_file, "[ST %d]: Sending ack message to %lu on track %d!\n", self, in_msg->source, curr_track->track_id);
                 tw_event_send(e);
                
                 curr_track->inbound = ST_OCCUPIED;
@@ -167,7 +168,8 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             if (curr_track->curr_tu != in_msg->source) {
                 // We got a board from someone that shouldnt have received the ack yet
                 fprintf(node_out_file, "[ST %d]: Spurious TRAIN_BOARD from %ld\n", self, in_msg->source);
-                break;
+                tw_lp_suspend(lp, 0, 1);
+                return;
             }
 
 
