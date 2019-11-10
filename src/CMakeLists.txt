@@ -21,11 +21,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake/Modules/")
 # All source files for the model
 SET(capacity_srcs
     cap_definitions.h
-	capacity_main.c
+    capacity_main.c
     passenger.h
     passenger.c
     transit_unit.c
-	station.c
+    station.c
+    track.c
+    track.h
     model.h
     model_mapping.c
 	model_config.h

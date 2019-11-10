@@ -73,6 +73,7 @@ void transit_unit_pre_run (tu_state *s, tw_lp *lp) {
 
 
     // Send an approach message to the first station on the schedule
+    fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %d\n", self, s->route->origin); 
     tw_event *e = tw_event_new(s->route->origin, s->start, lp);
     message *msg = tw_event_data(e);
     msg->type = TRAIN_ARRIVE;
@@ -124,9 +125,11 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             // Was it the station we were expecting to hear from?
             current_index = s->route_index - 1;
             next_station = get_next(s->route, &(current_index));
+
             if (next_station != in_msg->source) {
-                fprintf(node_out_file, "[TU %d] Spurious Ack from: %ld (expected %ld), ignoring!\n", self, in_msg->source, next_station);
-                break;
+                fprintf(node_out_file, "[TU %d] Spurious Ack from: %ld (expected %ld)\n", self, in_msg->source, next_station);
+                tw_lp_suspend(lp, 0, 0);
+                return;
             }
             
 
@@ -175,8 +178,9 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
             // Was that station supposed to be talking to us?
             if (in_msg->source != s->station) {
-                fprintf(node_out_file, "[TU %d] Spurious P_COMPLETE from: %ld (expected %ld), ignoring!\n", self, in_msg->source, s->station);
-                break;
+                fprintf(node_out_file, "[TU %d] Spurious P_COMPLETE from: %ld (expected %ld)\n", self, in_msg->source, s->station);
+                tw_lp_suspend(lp, 0, 1);
+                return;
             }
 
             // Ok tell the next station that we are on our way 

@@ -10,6 +10,7 @@
 #include "passenger.h"
 #include "model.h"
 #include "graph.h"
+#include "track.h"
 
 //Helper Functions
 void SWAP (int *a, int *b) {
@@ -25,98 +26,6 @@ void SWAP_SHORT (short *a, short *b) {
 
 
 
-// Map to a left or right track
-track_t* track_map(int curr_station, int prev_station, station_state* s, message *in_msg) {
-    // Left
-    if (prev_station < curr_station) {
-        return &(s->left); 
-        // Right
-    } else if (prev_station > curr_station) {
-        return &(s->right);
-        // This is basically an assert...
-    } else {
-        fprintf(node_out_file, "Proccing a %d %d", in_msg-> type, TRAIN_BOARD);
-        fprintf(node_out_file, "[%ld] Invalid matching stations: curr: %d prev: %d\n", g_tw_mynode, curr_station, prev_station);
-        exit(-1);
-    }
-}
-track_t* track_map_rev(int curr_station, int prev_station, station_state* s, message *in_msg) {
-    // Left
-    if (prev_station < curr_station) {
-        return &(s->left); 
-        // Right
-    } else if (prev_station > curr_station) {
-        return &(s->right);
-        // This is basically an assert...
-    } else {
-        fprintf(node_out_file, "Invalid matching stations: curr: %d prev: %d, state %d\n", curr_station, prev_station, in_msg->type);
-        exit(-1);
-    }
-}
-
-// Queue management 
-int add_train(tw_lpid new_train, track_t* track) {
-    // Add a new train -- find the first nonzero spot
-    // if queued_tu_present is 0, add to 0
-    // if 1, it means 1 train already here, add to 1
-    int index = track->queued_tu_present;
-
-    // Sanity check that it hasn't filled up
-    if (index >= QUEUE_LEN - 1) {
-        fprintf(node_out_file, "Station queue exceeded!\n");
-        exit(-1);
-    }
-
-    // Add it in
-    track->queued_tu[index] = new_train;
-    track->queued_tu_present += 1;
-
-    /// Return where we put it
-    return index;
-}
-int pop_head(track_t* track) {
-    // Grab the guy at the head
-    tw_lpid curr_train = track->queued_tu[0];
-
-    // Scoot everybody down
-    for (int i=0; i < (QUEUE_LEN - 1); i++) {
-        track->queued_tu[i] = track->queued_tu[i+1];
-    }
-    
-    // Decrease the queued count
-    track->queued_tu_present -= 1;
-
-    // Return that guy we got from the front
-    return curr_train;
-}
-int add_train_head(tw_lpid new_train, track_t* track) {
-    // Here we need to add somebody back to the head
-
-    // First, scoot everyone else down
-    for (int i=1; i < (QUEUE_LEN - 1); i++) {
-        track->queued_tu[i] = track->queued_tu[i+1];
-    }
-
-    // Put the new one in the right spot
-    track->queued_tu[0] = new_train;
-    // Bump up the count
-    track->queued_tu_present += 1;
-
-    return 0;
-}
-int pop_tail(track_t* track) {
-    // Just chop the guy off the back
-
-    int curr_index = track->queued_tu_present - 1;
-    tw_lpid curr_tail = track->queued_tu[curr_index]; 
-
-    // Clear out that tail
-    track->queued_tu[curr_index] = 0;
-    // decrement the number present
-    track->queued_tu_present -= 1;
-
-    return curr_tail;
-}
 
 //Init function
 // - called once for each LP
@@ -216,6 +125,9 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             fprintf(node_out_file, "[ST %d]: Train %lu arriving at %s on track %d!\n", self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
 
 
+
+
+
             // First, check to see what our state is
             if ((curr_track->inbound == ST_OCCUPIED) || (curr_track->inbound == ST_BOARDING)) {
                 // If we are currently occupied, put the TU in the queue for 
@@ -238,6 +150,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 msg->source = self;
                 msg->next_arrival = curr_track->next_arrival;
                 tw_output(lp, "[%.3f] ST %d: Sending ack message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
+                fprintf(node_out_file, "[ST %d]: Sending ack message to %lu on track %d!\n", self, in_msg->source, curr_track->track_id);
                 tw_event_send(e);
                
                 curr_track->inbound = ST_OCCUPIED;
@@ -255,7 +168,8 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             if (curr_track->curr_tu != in_msg->source) {
                 // We got a board from someone that shouldnt have received the ack yet
                 fprintf(node_out_file, "[ST %d]: Spurious TRAIN_BOARD from %ld\n", self, in_msg->source);
-                break;
+                tw_lp_suspend(lp, 0, 1);
+                return;
             }
 
 
