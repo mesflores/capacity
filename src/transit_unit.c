@@ -73,7 +73,7 @@ void transit_unit_pre_run (tu_state *s, tw_lp *lp) {
 
 
     // Send an approach message to the first station on the schedule
-    fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %d\n", self, s->route->origin); 
+    //fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %d\n", self, s->route->origin); 
     tw_event *e = tw_event_new(s->route->origin, s->start, lp);
     message *msg = tw_event_data(e);
     msg->type = TRAIN_ARRIVE;
@@ -113,11 +113,10 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     // handle the message
     switch (in_msg->type) {
         case ST_ACK : {
-            tw_output(lp, "[%.3f] TU %d: ACK received from %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
+            //tw_output(lp, "[%.3f] TU %d: ACK received from %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             //XXX XXX XXX XXX
             // Quick sanity check...
-            fprintf(node_out_file, "[TU %d] Received ack from: %ld\n", self, in_msg->source);
-            //fprintf(node_out_file, "[%ld - %d] TU ST_ACK: curr sta %ld prev %ld\n", g_tw_mynode, self, s->station, s->prev_station);
+            //fprintf(node_out_file, "[TU %d] Received ack from: %ld\n", self, in_msg->source);
             
             //XXX XXX XXX XXX
             // A station said we are good to go!
@@ -127,7 +126,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             next_station = get_next(s->route, &(current_index));
 
             if (next_station != in_msg->source) {
-                fprintf(node_out_file, "[TU %d] Spurious Ack from: %ld (expected %ld)\n", self, in_msg->source, next_station);
+                //fprintf(node_out_file, "[TU %d] Spurious Ack from: %ld (expected %ld)\n", self, in_msg->source, next_station);
                 tw_lp_suspend(lp, 0, 0);
                 return;
             }
@@ -150,7 +149,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             //XXX XXX XXX XXX
             // Quick sanity check...
             if (s->station == s->prev_station) {
-                fprintf(node_out_file, "[%ld] Station matches previous %ld %ld in ack\n", g_tw_mynode, s->station, s->prev_station);
+                //fprintf(node_out_file, "[%ld] Station matches previous %ld %ld in ack\n", g_tw_mynode, s->station, s->prev_station);
             }
 
             //XXX XXX XXX XXX
@@ -162,9 +161,8 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             msg->type = TRAIN_BOARD;
             msg->prev_station = s->prev_station;
             msg->source = self;
-            tw_output(lp, "[%.3f] TU %d: Sending alighting complete to %s!\n", tw_now(lp), self, sta_name_lookup(s->station));
-            fprintf(node_out_file, "[TU %d] Sending TRAIN_BOARD to %ld \n", self, s->station);
-            //fprintf(node_out_file, "[%ld - %d] TU ST_ACK: curr sta %ld prev %ld\n", g_tw_mynode, self, s->station, s->prev_station);
+            //tw_output(lp, "[%.3f] TU %d: Sending alighting complete to %s!\n", tw_now(lp), self, sta_name_lookup(s->station));
+            //fprintf(node_out_file, "[TU %d] Sending TRAIN_BOARD to %ld \n", self, s->station);
             tw_event_send(e);
 
             // Train is now accepting boarding passengers
@@ -174,11 +172,11 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
         }
         case P_COMPLETE : {
             // station is all done boarding 
-            fprintf(node_out_file, "[TU %d] TU P_COMPLETE: Got complete from %lu\n", self, in_msg->source); 
+            //fprintf(node_out_file, "[TU %d] TU P_COMPLETE: Got complete from %lu\n", self, in_msg->source); 
 
             // Was that station supposed to be talking to us?
             if (in_msg->source != s->station) {
-                fprintf(node_out_file, "[TU %d] Spurious P_COMPLETE from: %ld (expected %ld)\n", self, in_msg->source, s->station);
+                //fprintf(node_out_file, "[TU %d] Spurious P_COMPLETE from: %ld (expected %ld)\n", self, in_msg->source, s->station);
                 tw_lp_suspend(lp, 0, 1);
                 return;
             }
@@ -197,7 +195,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // Actually its possible somebody ahead of us was delayed, check the min time
                 if (delay < (s->min_time - tw_now(lp))) {
                     delay = s->min_time - tw_now(lp) + 1; // TODO: Controllable
-                    tw_output(lp, "[%.3f] TU %d: Incurred cascading delay!\n", tw_now(lp), self);
+                    //tw_output(lp, "[%.3f] TU %d: Incurred cascading delay!\n", tw_now(lp), self);
                 }
             }
 
@@ -214,14 +212,14 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             else {
                 msg->next_arrival = tw_now(lp) + delay;
             }
-            tw_output(lp, "[%.3f] TU %d: Sending depart to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
+            //tw_output(lp, "[%.3f] TU %d: Sending depart to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             tw_event_send(e);
 
             // Actually we were at the end, so just bail
             if (next_station == -1) {
                 // TODO: is there a better way to terminate?
                 // We do need to tell the last station that we left
-                tw_output(lp, "[%.3f] TU %d:Route ending at STA %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
+                tw_output(lp, "\n[%.3f] TU %d:Route ending at STA %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
                 break;
             }
 
@@ -235,8 +233,8 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             next_msg->type = TRAIN_ARRIVE;
             next_msg->source = self;
             next_msg->prev_station = s->station;
-            fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %lu\n", self, next_station); 
-            tw_output(lp, "[%.3f] TU %d: Sending approach to %s!\n", tw_now(lp), self, sta_name_lookup(next_station));
+            //fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %lu\n", self, next_station); 
+            //tw_output(lp, "[%.3f] TU %d: Sending approach to %s!\n", tw_now(lp), self, sta_name_lookup(next_station));
             tw_event_send(approach);
             break;
         }
@@ -250,7 +248,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             new_pass->next = s->pass_list;
             s->pass_list = new_pass;
             s->pass_count += 1;
-            tw_output(lp, "[%.3f] TU %d: Passenger boarded train %d!\n", tw_now(lp), self, self);
+            //tw_output(lp, "[%.3f] TU %d: Passenger boarded train %d!\n", tw_now(lp), self, self);
 
             // Have it continue boarding.
             // TODO: Probably we could do this optimistically instead of explicit acks...
@@ -259,7 +257,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             msg->type = TRAIN_BOARD;
             msg->source = self;
             msg->prev_station = s->prev_station;
-            tw_output(lp, "[%.3f] TU %d: Continue boarding to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
+            //tw_output(lp, "[%.3f] TU %d: Continue boarding to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             tw_event_send(e);
             break;
         }
@@ -277,7 +275,7 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
     int self = lp->gid;
     switch (in_msg->type) {
         case ST_ACK : {
-            fprintf(node_out_file, "[TU %d] Undoing an ack from %lu \n", self, s->station);
+            //fprintf(node_out_file, "[TU %d] Undoing an ack from %lu \n", self, s->station);
             //reset to approach
             s->curr_state = TU_APPROACH;
 
@@ -295,7 +293,7 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
             break;
         }
         case P_COMPLETE : {
-            fprintf(node_out_file, "[TU %d] Undoing P_COMPLETE from %lu\n", self, s->station);
+            //fprintf(node_out_file, "[TU %d] Undoing P_COMPLETE from %lu\n", self, s->station);
             s->route_index -= 1;
             s->curr_state = TU_BOARD;
             break;
