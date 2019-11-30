@@ -31,6 +31,7 @@ void init_global_routes(const char* routes_fn) {
     int total_routes = 0;
     int curr_route = 0;
     int stop_counter;
+    char *line_holder, *end, *token;
 
     int i;
 
@@ -59,10 +60,10 @@ void init_global_routes(const char* routes_fn) {
         } 
         // Ok now, we are parsing the regular lines
         // Read the time first
-        if (start_time == 0) {
-            start_time = atoi(line);
-            continue;
-        }
+//        if (start_time == 0) {
+//            start_time = atoi(line);
+//            continue;
+//        }
         // Otherwise it's time to read the route itself!
         // Strip the newline
         newline = strchr(line, '\n');
@@ -72,18 +73,48 @@ void init_global_routes(const char* routes_fn) {
         // 0 out the stop counter
         stop_counter = 0;
 
+
         // Now tokenize and get the path
         curr = strtok(line, " ");
-        // Stash it
-        strcpy(stops[stop_counter], curr);
-
         while (curr != NULL) {
-            curr = strtok(NULL, " ");
-            if (curr != NULL) {
-                stop_counter++;
-                strcpy(stops[stop_counter], curr);
+
+            // Process the current line
+            line_holder = end = strdup(curr);
+
+            // That first one is the station
+            token = strsep(&end, ",");
+            strcpy(stops[stop_counter], token);
+
+            // That second one is the time
+            token = strsep(&end, ",");
+            if (start_time == 0) {
+                start_time = atoi(token);
             }
+            // Clean up our strsep mess
+            free(line_holder);
+
+            // Bump the counter
+            stop_counter++;
+            // Get the next one 
+            curr = strtok(NULL, " ");
         }
+        // On the last interation, we dont move to next stop
+        stop_counter--;
+
+//        // Now tokenize and get the path
+//        curr = strtok(line, " ");
+//        // Stash it
+//        strcpy(stops[stop_counter], curr);
+//
+//        while (curr != NULL) {
+//            curr = strtok(NULL, " ");
+//            if (curr != NULL) {
+//                stop_counter++;
+//                strcpy(stops[stop_counter], curr);
+//            }
+//        }
+
+
 
         // Ok, we've copied all the stops into a temp array, now go ahead and
         // put together a global list for init

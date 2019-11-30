@@ -376,10 +376,13 @@ def gen_routes_out(data, outfile, max_time=0):
 
             if (max_time and (start_time - min_stamp > max_time)):
                 continue
-
-            out_f.write("%d\n"%(start_time))
+    
+            # Now that we write the time at each stop, we don't need stand along starts
+            #out_f.write("%d\n"%(start_time))
             for stop, s_time in route:
-                out_f.write("%s "%stop)
+                # Let's make a nice epoch version of the stop time
+                s_epoch = int(datetime.datetime.strptime(s_time, "%Y%m%d %H:%M:%S").timestamp())
+                out_f.write("%s,%s "%(stop, s_epoch))
             out_f.write("\n")
 
 if __name__ == "__main__":
