@@ -17,10 +17,11 @@
 
 // Read the config and init the global routes, return the number of runs
 void init_global_routes(const char* routes_fn) {
-    char line[512]; //XXX DANGEROUS
+    char line[1024]; //XXX DANGEROUS, assumes shortish lines
     char stops[256][128]; // XXX less but STILL DANGEROUS
 
     int start_time = 0;
+    int end_time = 0;
     char* curr;
     char* newline;
     int route_steps = 0;
@@ -59,12 +60,6 @@ void init_global_routes(const char* routes_fn) {
             continue;
         } 
         // Ok now, we are parsing the regular lines
-        // Read the time first
-//        if (start_time == 0) {
-//            start_time = atoi(line);
-//            continue;
-//        }
-        // Otherwise it's time to read the route itself!
         // Strip the newline
         newline = strchr(line, '\n');
         if (newline != NULL) {
@@ -90,6 +85,7 @@ void init_global_routes(const char* routes_fn) {
             if (start_time == 0) {
                 start_time = atoi(token);
             }
+            end_time = atoi(token);
             // Clean up our strsep mess
             free(line_holder);
 
@@ -101,24 +97,10 @@ void init_global_routes(const char* routes_fn) {
         // On the last interation, we dont move to next stop
         stop_counter--;
 
-//        // Now tokenize and get the path
-//        curr = strtok(line, " ");
-//        // Stash it
-//        strcpy(stops[stop_counter], curr);
-//
-//        while (curr != NULL) {
-//            curr = strtok(NULL, " ");
-//            if (curr != NULL) {
-//                stop_counter++;
-//                strcpy(stops[stop_counter], curr);
-//            }
-//        }
-
-
-
         // Ok, we've copied all the stops into a temp array, now go ahead and
         // put together a global list for init
         (route_list[curr_route]).start_time = start_time;
+        (route_list[curr_route]).end_time = end_time;
         (route_list[curr_route]).length = stop_counter + 1;
         (route_list[curr_route]).stops = (char**)calloc(stop_counter +1, sizeof(char*));
         for(i=0; i < stop_counter+1; i++) {
@@ -127,6 +109,7 @@ void init_global_routes(const char* routes_fn) {
             // Copy it
             strcpy((route_list[curr_route]).stops[i], stops[i]);
         }
+        (route_list[curr_route]).next_route = NULL;
 
         // Clear out start time for the next one
         start_time = 0;
@@ -135,8 +118,91 @@ void init_global_routes(const char* routes_fn) {
     }
 
     g_total_routes = total_routes;
+    g_total_transit_units = allocate_transit_units(); 
 
     return;
+}
+
+/* 
+ * Make a new, blank, route set.
+ */
+route_set_t* create_set() {
+    route_set_t* new_set;
+
+    new_set = (route_set_t*)malloc(sizeof(route_set_t));
+    if (new_set == NULL) {
+        perror("Failed to allocate new route list!\n");
+        exit(1);
+    }
+    
+    new_set->first_route = NULL;
+    new_set->last_route = NULL;
+    new_set->curr_end = 0;
+    new_set->next = NULL;
+
+    return new_set;
+}
+
+/* 
+ * Add a route to this set.
+ */
+int add_route(route_set_t* curr_set, abstract_route_t* new_route){
+    // Can we add it?
+    if (new_route->start_time < (curr_set->curr_end + MIN_ROUTE_GAP)) {
+        return 1;
+    }
+
+    // Actually staple it to the end   
+    if (curr_set->first_route == NULL) {
+        curr_set->first_route = new_route;
+        curr_set->last_route = new_route;
+    } else {
+        curr_set->last_route->next_route = new_route;
+    }
+    
+    // Bump the endings
+    curr_set->last_route = new_route;
+    curr_set->curr_end = new_route->end_time;
+
+    return 0;
+}
+
+/*
+ * Spin through the routes and assign them to transit units. For now. just do it 
+ * greedily from the front, for simplicity
+ */
+int allocate_transit_units() {
+    int num_transit_units = 0;
+    int i=0;
+    route_set_t* curr_set = NULL;
+
+
+    // The idea is that someday I can replace this with something that
+    // implements a heuristic for assigning physical vehicles to runs.
+    // For now, its silly, but easy to implement.
+
+    // Start off with one
+    route_set_list = create_set();
+
+    // Spin through all the routes and add them to the first
+    // set that will take them. Make a new one if none will.
+    for(i=0; i < g_total_routes; i++) {
+        curr_set = route_set_list; 
+      
+        while(add_route(curr_set, &route_list[i]) != 0) {
+            // Are we at the end of the list?
+            if (curr_set->next == NULL) {
+                // Allocate a new one
+                curr_set->next = create_set();
+                // Since we needed a new one, that amounts to an additional
+                // transit unit, so bump the count
+                num_transit_units++;
+            }
+            curr_set = curr_set->next;
+        }
+    }
+
+    return num_transit_units;
 }
 
 /* 
@@ -167,8 +233,13 @@ int get_route_count() {
     return g_total_routes;
 }
 
+int get_transit_unit_count(){
+    return g_total_transit_units;
+}
+
 abstract_route_t* get_route(int id) {
     //TODO: safety
+    // have this select from the list of pre-assigned route-sets
     return &(route_list[id - route_offset]);
 }
 
@@ -201,6 +272,8 @@ route_t* init_route(char** steps, int len) {
     route_obj->origin = (route_obj->route)[0];
     route_obj->start_dir = (route_obj->route)[1] - (route_obj->route)[0];
     route_obj->terminal = (route_obj->route)[len-1];
+
+    route_obj->next_route = NULL;
 
     return route_obj;
 }

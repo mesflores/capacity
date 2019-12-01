@@ -99,7 +99,7 @@ int capacity_main (int argc, char* argv[]) {
     // Set the two globals for the number of stations and stuff
     g_num_stations = get_station_count();
     // TODO: These should not map 1 to 1, but for now they do for simplicity
-    g_num_transit_units = get_route_count();
+    g_num_transit_units = get_transit_unit_count();
     set_route_offset(g_num_stations);
 
     // Set the global time offset
