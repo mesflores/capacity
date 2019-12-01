@@ -40,9 +40,8 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
 
 
     // Go ahead and init the route
-    abstract_route_t* my_route = get_route(self);
-    s->route = init_route(my_route->stops, my_route->length);
-    s->start = my_route->start_time - g_time_offset;
+    s->route = get_route(self);
+    s->start = s->route->start_time - g_time_offset;
     s->pass_list = NULL;
     s->pass_count = 0;
 

@@ -56,7 +56,7 @@ void init_global_routes(const char* routes_fn) {
             count_line = true;
             total_routes = atoi(line);
             // Go ahead and allocate space for those bad boys
-            route_list = (abstract_route_t* )calloc(total_routes, sizeof(abstract_route_t));
+            route_list = (route_t* )calloc(total_routes, sizeof(route_t));
             continue;
         } 
         // Ok now, we are parsing the regular lines
@@ -103,12 +103,23 @@ void init_global_routes(const char* routes_fn) {
         (route_list[curr_route]).end_time = end_time;
         (route_list[curr_route]).length = stop_counter + 1;
         (route_list[curr_route]).stops = (char**)calloc(stop_counter +1, sizeof(char*));
+        (route_list[curr_route]).route = (int*)calloc(stop_counter +1, sizeof(int));
         for(i=0; i < stop_counter+1; i++) {
             // Make some space for that name 
             (route_list[curr_route]).stops[i] = (char *)calloc(strlen(stops[i]) + 1, sizeof(char)); 
             // Copy it
             strcpy((route_list[curr_route]).stops[i], stops[i]);
+            // Make an array of the ID mapped versions
+            (route_list[curr_route]).route[i] = sta_id_lookup(stops[i]);
         }
+
+
+        // Set the origin and terminal based on what we were given
+        (route_list[curr_route]).origin = (route_list[curr_route]).route[0];
+        (route_list[curr_route]).start_dir = (route_list[curr_route]).route[1] - (route_list[curr_route]).route[0];
+        (route_list[curr_route]).terminal = (route_list[curr_route]).route[stop_counter];
+
+
         (route_list[curr_route]).next_route = NULL;
 
         // Clear out start time for the next one
@@ -146,7 +157,7 @@ route_set_t* create_set() {
 /* 
  * Add a route to this set.
  */
-int add_route(route_set_t* curr_set, abstract_route_t* new_route){
+int add_route(route_set_t* curr_set, route_t* new_route){
     // Can we add it?
     if (new_route->start_time < (curr_set->curr_end + MIN_ROUTE_GAP)) {
         return 1;
@@ -175,6 +186,7 @@ int allocate_transit_units() {
     int num_transit_units = 0;
     int i=0;
     route_set_t* curr_set = NULL;
+    route_set_t* prev_set = NULL;
 
 
     // The idea is that someday I can replace this with something that
@@ -182,12 +194,12 @@ int allocate_transit_units() {
     // For now, its silly, but easy to implement.
 
     // Start off with one
-    route_set_list = create_set();
+    route_set_list_l = create_set();
 
     // Spin through all the routes and add them to the first
     // set that will take them. Make a new one if none will.
     for(i=0; i < g_total_routes; i++) {
-        curr_set = route_set_list; 
+        curr_set = route_set_list_l; 
       
         while(add_route(curr_set, &route_list[i]) != 0) {
             // Are we at the end of the list?
@@ -200,6 +212,18 @@ int allocate_transit_units() {
             }
             curr_set = curr_set->next;
         }
+    }
+
+    // For ease of assigning the route sets to transit units, lets map them into an array
+    route_set_list = (route_set_t*)calloc(num_transit_units, sizeof(route_set_t));
+    curr_set = route_set_list_l;
+    i=0;
+    while(curr_set != NULL) {
+        memcpy(&(route_set_list[i]), curr_set, sizeof(route_set_t));
+        i++;
+        prev_set = curr_set;
+        curr_set = curr_set->next;
+        free(prev_set);
     }
 
     return num_transit_units;
@@ -237,7 +261,7 @@ int get_transit_unit_count(){
     return g_total_transit_units;
 }
 
-abstract_route_t* get_route(int id) {
+route_t* get_route(int id) {
     //TODO: safety
     // have this select from the list of pre-assigned route-sets
     return &(route_list[id - route_offset]);
@@ -248,36 +272,6 @@ int get_g_start_time() {
 }
 
 /************ Route Objects *********************/
-
-route_t* init_route(char** steps, int len) {
-    route_t* route_obj;
-    int i;
-
-    if (len == 0) {
-        perror("Invalid route length!\n");
-    }
-
-    // Alloate the route struc itself
-    route_obj = tw_calloc(TW_LOC, "init_route", sizeof(route_t), 1);
-    // ok, now allocate and copy the steps
-    route_obj->route = tw_calloc(TW_LOC, "init_route", sizeof(char*), len);
-    for (i=0; i<len; i++) {
-        // Copy the name into there
-        (route_obj->route)[i] = sta_id_lookup(steps[i]);
-    }
-
-    route_obj->length = len;
-
-    // Set the origin and terminal based on what we were given
-    route_obj->origin = (route_obj->route)[0];
-    route_obj->start_dir = (route_obj->route)[1] - (route_obj->route)[0];
-    route_obj->terminal = (route_obj->route)[len-1];
-
-    route_obj->next_route = NULL;
-
-    return route_obj;
-}
-
 
 /* Get the next stop along the route */
 long int get_next(route_t* route_obj, int* current){

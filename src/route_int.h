@@ -5,7 +5,8 @@
 
 #define MIN_ROUTE_GAP 7200
 
-abstract_route_t* route_list;
+route_t* route_list;
+route_set_t* route_set_list_l;
 route_set_t* route_set_list;
 
 int g_total_routes;
