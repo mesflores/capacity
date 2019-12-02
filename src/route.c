@@ -113,13 +113,11 @@ void init_global_routes(const char* routes_fn) {
             (route_list[curr_route]).route[i] = sta_id_lookup(stops[i]);
         }
 
-
         // Set the origin and terminal based on what we were given
         (route_list[curr_route]).origin = (route_list[curr_route]).route[0];
         (route_list[curr_route]).start_dir = (route_list[curr_route]).route[1] - (route_list[curr_route]).route[0];
         (route_list[curr_route]).terminal = (route_list[curr_route]).route[stop_counter];
-
-
+        (route_list[curr_route]).prev_route = NULL;
         (route_list[curr_route]).next_route = NULL;
 
         // Clear out start time for the next one
@@ -159,7 +157,7 @@ route_set_t* create_set() {
  */
 int add_route(route_set_t* curr_set, route_t* new_route){
     // Can we add it?
-    if (new_route->start_time < (curr_set->curr_end + MIN_ROUTE_GAP)) {
+    if ((curr_set->curr_end !=0) && (new_route->start_time < (curr_set->curr_end + MIN_ROUTE_GAP))) {
         return 1;
     }
 
@@ -168,6 +166,7 @@ int add_route(route_set_t* curr_set, route_t* new_route){
         curr_set->first_route = new_route;
         curr_set->last_route = new_route;
     } else {
+        new_route->prev_route = curr_set->last_route;
         curr_set->last_route->next_route = new_route;
     }
     
@@ -183,7 +182,7 @@ int add_route(route_set_t* curr_set, route_t* new_route){
  * greedily from the front, for simplicity
  */
 int allocate_transit_units() {
-    int num_transit_units = 0;
+    int num_transit_units = 1;
     int i=0;
     route_set_t* curr_set = NULL;
     route_set_t* prev_set = NULL;
@@ -200,7 +199,6 @@ int allocate_transit_units() {
     // set that will take them. Make a new one if none will.
     for(i=0; i < g_total_routes; i++) {
         curr_set = route_set_list_l; 
-      
         while(add_route(curr_set, &route_list[i]) != 0) {
             // Are we at the end of the list?
             if (curr_set->next == NULL) {
@@ -262,7 +260,10 @@ int get_transit_unit_count(){
 }
 
 route_t* get_route(int id) {
-    //TODO: safety
+    if ((id - route_offset) > g_total_transit_units) {
+        perror("Attempted to a fetch a bad route id!\n");
+        exit(1);
+    }
     // have this select from the list of pre-assigned route-sets
     return &(route_list[id - route_offset]);
 }

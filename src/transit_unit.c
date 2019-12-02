@@ -18,6 +18,79 @@ void SWAP_UL (unsigned long *a, unsigned long *b) {
     *b = tmp;
 }
 
+/*
+ * initial_approach - Send a message to the first station in the route
+ */
+int initial_approach(tu_state *s, tw_lp *lp, int init) {
+    int self = lp->gid;
+
+    // Send an approach message to the first station on the schedule
+    fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %d\n", self, s->route->origin); 
+    fflush(node_out_file);
+
+
+    if (init == 0) {
+        tw_event *e = tw_event_new(s->route->origin, (float)(s->start) - tw_now(lp), lp);
+        message *msg = tw_event_data(e);
+        msg->type = TRAIN_ARRIVE;
+        msg->source = self;
+        msg->prev_station = s->prev_station;
+        tw_event_send(e);
+    } else {
+        tw_event *e = tw_event_new(s->route->origin, (float)(s->start) - tw_now(lp), lp);
+        message *msg = tw_event_data(e);
+        msg->type = TRAIN_ARRIVE ;
+        msg->source = self;
+        msg->prev_station = s->prev_station;
+        tw_event_send(e);
+    }
+
+
+    // Update your own state
+    s->curr_state = TU_APPROACH;
+
+    return 0;
+}
+
+/*
+ * advance_route - check to see if there is another route in the list. If so,
+ * go ahead and reset the state for the new route
+ */
+int advance_route(tu_state *s, tw_lp *lp) {
+    int self = lp->gid;
+    // If this is the first time through, grab it from the list
+    if (s->route == NULL) {
+        s->route = get_route(self);
+
+    } else {
+        // If the next one is null, dont change it
+        if (s->route->next_route == NULL) {
+            return 1;
+        }
+        // Bump the route to the next one in the list 
+        s->route = s->route->next_route;
+    }
+    // Reset the state for the new route
+    s->curr_state = TU_IDLE;
+    s->start = s->route->start_time - g_time_offset;
+    // Clear out the passengers
+    s->pass_list = NULL;
+    s->pass_count = 0;
+
+    // For the first stop, we have to give it a direction, to avoid
+    // pathological queuing, so just give it the direction that matches where
+    // it's going by making a fake previous
+    if (s->route->start_dir > 0) {
+        s->prev_station = s->route->origin - 1;
+    } else {
+        s->prev_station = s->route->origin + 1;
+    }
+    s->station = s->prev_station; // just set the the same 
+    s->route_index = 0;
+
+    return 0;
+}
+
 //Init function
 // - called once for each LP
 // ! LP can only send messages to itself during init !
@@ -33,28 +106,10 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
         return;
     }
 
-
-    // Init the train state
-    // TODO: At some point schedule initialization will be a complicated question
-    s->curr_state = TU_IDLE; // Starts nowhere
-
-
     // Go ahead and init the route
-    s->route = get_route(self);
-    s->start = s->route->start_time - g_time_offset;
-    s->pass_list = NULL;
-    s->pass_count = 0;
+    s->route = NULL;
 
-    // For the first stop, we have to give it a direction, to avoid
-    // pathological queuing, so just give it the direction that matches where
-    // it's going by making a fake previous
-    if (s->route->start_dir > 0) {
-        s->prev_station = s->route->origin - 1;
-    } else {
-        s->prev_station = s->route->origin + 1;
-    }
-    s->station = s->prev_station; // just set the the same 
-    s->route_index = 0;
+    advance_route(s, lp);
 
     return;
 }
@@ -70,20 +125,7 @@ void transit_unit_pre_run (tu_state *s, tw_lp *lp) {
         return;
     }
 
-
-    // Send an approach message to the first station on the schedule
-    //fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %d\n", self, s->route->origin); 
-    tw_event *e = tw_event_new(s->route->origin, s->start, lp);
-    message *msg = tw_event_data(e);
-    msg->type = TRAIN_ARRIVE;
-    // All these passengers got on here I guess
-    msg->source = self;
-    msg->prev_station = s->prev_station;
-    //tw_output(lp, "[%.3f] TU %d: Sending arrive message to %s\n", tw_now(lp), self, sta_name_lookup(s->route->origin));
-    tw_event_send(e);
-
-    // Update your own state
-    s->curr_state = TU_APPROACH;
+    initial_approach(s, lp, 0);
 
     return;
 }
@@ -115,7 +157,8 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             //tw_output(lp, "[%.3f] TU %d: ACK received from %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             //XXX XXX XXX XXX
             // Quick sanity check...
-            //fprintf(node_out_file, "[TU %d] Received ack from: %ld\n", self, in_msg->source);
+            fprintf(node_out_file, "[TU %d] Received ack from: %ld\n", self, in_msg->source);
+            fflush(node_out_file);
             
             //XXX XXX XXX XXX
             // A station said we are good to go!
@@ -125,7 +168,8 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             next_station = get_next(s->route, &(current_index));
 
             if (next_station != in_msg->source) {
-                //fprintf(node_out_file, "[TU %d] Spurious Ack from: %ld (expected %ld)\n", self, in_msg->source, next_station);
+                fprintf(node_out_file, "[TU %d] Spurious Ack from: %ld (expected %ld)\n", self, in_msg->source, next_station);
+                fflush(node_out_file);
                 tw_lp_suspend(lp, 0, 0);
                 return;
             }
@@ -170,8 +214,12 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             break;
         }
         case P_COMPLETE : {
+
             // station is all done boarding 
-            //fprintf(node_out_file, "[TU %d] TU P_COMPLETE: Got complete from %lu\n", self, in_msg->source); 
+            fprintf(node_out_file, "[TU %d] TU P_COMPLETE: Got complete from %lu\n", self, in_msg->source); 
+            fflush(node_out_file);
+            fprintf(node_out_file, "[TU %d] Current route index: %d\n", self, s->route_index); 
+            fflush(node_out_file);
 
             // Was that station supposed to be talking to us?
             if (in_msg->source != s->station) {
@@ -216,9 +264,23 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
             // Actually we were at the end, so just bail
             if (next_station == -1) {
-                // TODO: is there a better way to terminate?
+                fprintf(node_out_file, "[TU %d] Finished route!\n", self); 
+                fflush(node_out_file);
+
                 // We do need to tell the last station that we left
                 tw_output(lp, "\n[%.3f] TU %d:Route ending at STA %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
+                
+                if (advance_route(s, lp) == 0) {
+                    tw_output(lp, "\n[%.3f] TU %d: Starting fresh route!\n", tw_now(lp), self);
+                    initial_approach(s, lp, 1);
+                    fprintf(node_out_file, "[TU %d] After resetting, my index is: %d\n", self, s->route_index); 
+                    fflush(node_out_file);
+                } else {
+                    // End of the run for this LP, let us know
+                    tw_output(lp, "\n[%.3f] TU %d: Completed final run!\n", tw_now(lp), self);
+                }
+
+
                 break;
             }
 
@@ -274,7 +336,8 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
     int self = lp->gid;
     switch (in_msg->type) {
         case ST_ACK : {
-            //fprintf(node_out_file, "[TU %d] Undoing an ack from %lu \n", self, s->station);
+            fprintf(node_out_file, "[TU %d] Undoing an ack from %lu \n", self, s->station);
+            fflush(node_out_file);
             //reset to approach
             s->curr_state = TU_APPROACH;
 
@@ -292,8 +355,27 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
             break;
         }
         case P_COMPLETE : {
-            //fprintf(node_out_file, "[TU %d] Undoing P_COMPLETE from %lu\n", self, s->station);
-            s->route_index -= 1;
+            fprintf(node_out_file, "[TU %d] Undoing P_COMPLETE from %lu\n", self, s->station);
+            fflush(node_out_file);
+            // First, we need to check if our route index is 0, if so, we
+            // must roll back to the previous
+            if (s->route_index == 0) {
+                fprintf(node_out_file, "[TU %d] Undoing roll over to next route!\n", self);
+                fflush(node_out_file);
+                // We don't have to reset the state here, we will get it at the end 
+                //s->curr_state = TU_BOARD;
+                s->route = s->route->prev_route;
+                s->route_index = s->route->length - 1;
+                s->station = s->route->route[s->route_index];
+                s->prev_station = s->route->route[s->route_index - 1];
+                // Passenger features stay blank since the train empties at last stop
+                s->start = s->route->start_time - g_time_offset;
+            } else {
+                fprintf(node_out_file, "[TU %d] Undoing regular complete!\n", self);
+                fflush(node_out_file);
+                s->route_index -= 1;
+            }
+
             s->curr_state = TU_BOARD;
             break;
         }

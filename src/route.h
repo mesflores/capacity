@@ -18,6 +18,7 @@ typedef struct route_t {
     int start_dir;
     int terminal;
 
+    struct route_t* prev_route;
     struct route_t* next_route;
 } route_t;
 

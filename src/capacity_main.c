@@ -70,13 +70,16 @@ int capacity_main (int argc, char* argv[]) {
 	tw_opt_add(model_opts);
 	tw_init(&argc, &argv);
 
-    // Init the global vars
-    graph_init(g_adj_mat_fn);
-    init_global_routes(g_routes_fn);
-
+    // Create files for debugging
     char debugfilename[100];
     sprintf(debugfilename, "out_dat/node_%ld_output_file.txt", g_tw_mynode);
     node_out_file = fopen(debugfilename, "w");
+
+    fprintf(node_out_file, "PID: %d\n", getpid());
+
+    // Init the global vars
+    graph_init(g_adj_mat_fn);
+    init_global_routes(g_routes_fn);
 
 	//Custom Mapping
 	/*

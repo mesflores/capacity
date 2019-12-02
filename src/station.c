@@ -123,11 +123,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             //tw_output(lp, "[%.3f] ST %d: Train %d arriving at %s on track %d!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
                  
             //fprintf(node_out_file, "[ST %d]: Train %lu arriving at %s on track %d!\n", self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
-
-
-
-
-
+            
             // First, check to see what our state is
             if ((curr_track->inbound == ST_OCCUPIED) || (curr_track->inbound == ST_BOARDING)) {
                 // If we are currently occupied, put the TU in the queue for 
@@ -162,7 +158,8 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
         case TRAIN_BOARD : {
             // Passengers have finished alighting, waiting passengers can board
             // TODO: Loop to send some boarding messages
-            //fprintf(node_out_file, "[ST %d]: Received TRAIN_BOARD from %ld\n", self, in_msg->source);
+            fprintf(node_out_file, "[ST %d]: Received TRAIN_BOARD from %ld\n", self, in_msg->source);
+            fflush(node_out_file);
 
             // Was this train actualy in the station?
             if (curr_track->curr_tu != in_msg->source) {
