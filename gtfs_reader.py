@@ -352,6 +352,15 @@ def gen_matrix_out(adj_matrix, outfile):
             for dst in adj_matrix[src]:
                 out_f.write("%s %s %d\n"%(src, dst, adj_matrix[src][dst]))
 
+def compute_time(x):
+    """ Given a formated time, compute epoch"""
+    return int(datetime.datetime.strptime(x, "%Y%m%d %H:%M:%S").timestamp())
+
+def hash_route(route):
+    """ Given a route as a list of stops and times, compute a silly hash for it"""
+    str_list = [x[0]+x[1] for x in route]
+    return "".join(str_list)
+ 
 def gen_routes_out(data, outfile, max_time=0):
     """ Generate route info for runs described in GTFS"""
     with open(outfile, 'w') as out_f:
@@ -364,15 +373,24 @@ def gen_routes_out(data, outfile, max_time=0):
         full_route_list = []
 
         # Now the specific routes
-        for route in data["routes"]:
-            full_route_list.extend(generate_route(route, data))
+        unique_set = set()
+        for route_set in data["routes"]:
+            full_route = generate_route(route_set, data)
+            new_routes = []
+            # NOTE: Something can result in dupes, de dupe it!
+            for route in full_route:
+                hash_r = hash_route(route)
+                if hash_r in unique_set:
+                    continue
+                unique_set.add(hash_r)
+                new_routes.append(route)
+            full_route_list.extend(new_routes)
 
         out_f.write("%d\n"%(len(full_route_list)))
 
-        for route in full_route_list:
-            # Write the seperator
+        for route in sorted(full_route_list, key=lambda x: compute_time(x[0][1])):
             # Write the start time in epoch
-            start_time = int(datetime.datetime.strptime(route[0][1], "%Y%m%d %H:%M:%S").timestamp())
+            start_time = compute_time(route[0][1])
 
             if (max_time and (start_time - min_stamp > max_time)):
                 continue
@@ -381,7 +399,7 @@ def gen_routes_out(data, outfile, max_time=0):
             #out_f.write("%d\n"%(start_time))
             for stop, s_time in route:
                 # Let's make a nice epoch version of the stop time
-                s_epoch = int(datetime.datetime.strptime(s_time, "%Y%m%d %H:%M:%S").timestamp())
+                s_epoch = compute_time(s_time)
                 out_f.write("%s,%s "%(stop, s_epoch))
             out_f.write("\n")
 
