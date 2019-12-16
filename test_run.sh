@@ -1,22 +1,24 @@
 #!/usr/local/bin/bash
 
 MAXDIFF=4
+MAXTS=30000
 
 DAT=$1
 MAT=$2
+
 
 # Clean up leftovers
 rm -f base.out seq.out con.out opt.raw opt.out
 
 # Base run
-#models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$DAT > base.raw
+#models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$DAT --end=1382400> base.raw
 #cat base.raw | grep \\\[ | sort > base.out
 
 ## Run it sequential 
 echo "Running Sequential.."
-mpirun -np 1 models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$DAT | grep \\\[ | grep -v "Total KPs" | sort > seq.out
+mpirun -np 1 models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$DAT --end=$MAXTS | grep \\\[ | grep -v "Total KPs" | sort > seq.out
 echo "Runing conservative..."
-mpirun -np 4 models/capacity/src/capacity --synch=2 --mat=$MAT --routes=$DAT | grep \\\[ | grep -v "Total KPs" | sort > con.out
+mpirun -np 2 models/capacity/src/capacity --synch=2 --mat=$MAT --routes=$DAT --end=$MAXTS | grep \\\[ | grep -v "Total KPs" | sort > con.out
 
 # Compare them
 diff seq.out con.out
@@ -29,9 +31,9 @@ fi
 
 echo "Running optimistic..."
 # Run it optimistic, lots of times
-for i in {1..10}
+for i in {1..1}
     do
-        mpirun -np 4 models/capacity/src/capacity --synch=3 --mat=$MAT --routes=$DAT > opt.raw
+        mpirun -np 2 models/capacity/src/capacity --synch=3 --mat=$MAT --routes=$DAT --end=$MAXTS> opt.raw
         # break out if it fails
         if [ "$?" -ne 0 ]
         then
