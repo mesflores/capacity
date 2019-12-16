@@ -120,9 +120,10 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             break;
         }
         case TRAIN_ARRIVE : {
-            //tw_output(lp, "[%.3f] ST %d: Train %d arriving at %s on track %d!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
+            tw_output(lp, "\n[%.3f] ST %d: Train %d arriving at %s on track %d!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
                  
-            //fprintf(node_out_file, "[ST %d]: Train %lu arriving at %s on track %d!\n", self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
+            fprintf(node_out_file, "[ST %d]: Train %lu arriving at %s on track %d!\n", self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
+            fflush(node_out_file);
             
             // First, check to see what our state is
             if ((curr_track->inbound == ST_OCCUPIED) || (curr_track->inbound == ST_BOARDING)) {
@@ -133,7 +134,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // notification when the state transitions to empty
                 add_train(in_msg->source, curr_track); 
 
-                //tw_output(lp, "[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source); 
+                tw_output(lp, "\n[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source); 
                 //fprintf(node_out_file, "[ST %d]: Queueing up %lu\n", self, in_msg->source);
 
             } else {
@@ -303,7 +304,8 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
             break;
         }
         case TRAIN_ARRIVE : {
-            //fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_ARRIVE call from %lu!\n", self, in_msg->source);
+            fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_ARRIVE call from %lu!\n", self, in_msg->source);
+            fflush(node_out_file);
             // If we had something queued, that means this arrival queued, clear it 
             if (curr_track->queued_tu_present > 0) {
                 pop_tail(curr_track);   

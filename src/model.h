@@ -138,6 +138,15 @@ typedef struct {
     int pass_count;
 
     int min_time; // the minimum arrival time at next station
+
+    ///XXX XXX XXX XXX
+    struct route_t* old_route;
+    int old_route_index;
+    tw_lpid old_prev_station;
+    tw_lpid old_station;
+    int old_start;
+    ///XXX XXX XXX XXX
+
 } tu_state;
 
 //Function Declarations
