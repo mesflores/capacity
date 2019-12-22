@@ -39,7 +39,7 @@ void init_global_routes(const char* routes_fn) {
     // TODO: Add the path as a proper arg
     FILE* dat_file = fopen(routes_fn, "r"); 
     if (dat_file == NULL) {
-        perror("Failed to open file!");
+        perror("Failed to open routes file!");
         exit(-1);
     }
 
@@ -157,9 +157,22 @@ route_set_t* create_set() {
  */
 int add_route(route_set_t* curr_set, route_t* new_route){
     // Can we add it?
-    if ((curr_set->curr_end !=0) && (new_route->start_time < (curr_set->curr_end + MIN_ROUTE_GAP))) {
-        return 1;
+    // This criteria checks against:
+    //  a) There are any routes in here
+    //  b) The start time is within the MIN ROUTE GAP
+    //if ((curr_set->curr_end !=0) && (new_route->start_time < (curr_set->curr_end + MIN_ROUTE_GAP))) {
+    //    return 1;
+    //}
+    // This criteria requres:
+    // 	a) That new route picks up at the same station
+    // 	b) starts strictly after its arrival
+    if ((curr_set->curr_end !=0) &&
+        ((curr_set->last_route->terminal != new_route->origin) ||
+        (new_route->start_time <= curr_set->curr_end))) {
+        return 1; 
     }
+
+
 
     // Actually staple it to the end   
     if (curr_set->first_route == NULL) {
