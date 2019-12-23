@@ -160,17 +160,17 @@ int add_route(route_set_t* curr_set, route_t* new_route){
     // This criteria checks against:
     //  a) There are any routes in here
     //  b) The start time is within the MIN ROUTE GAP
-    //if ((curr_set->curr_end !=0) && (new_route->start_time < (curr_set->curr_end + MIN_ROUTE_GAP))) {
-    //    return 1;
-    //}
+    if ((curr_set->curr_end !=0) && (new_route->start_time < (curr_set->curr_end + MIN_ROUTE_GAP))) {
+        return 1;
+    }
     // This criteria requres:
     // 	a) That new route picks up at the same station
     // 	b) starts strictly after its arrival
-    if ((curr_set->curr_end !=0) &&
-        ((curr_set->last_route->terminal != new_route->origin) ||
-        (new_route->start_time <= curr_set->curr_end))) {
-        return 1; 
-    }
+    //if ((curr_set->curr_end !=0) &&
+    //    ((curr_set->last_route->terminal != new_route->origin) ||
+    //    (new_route->start_time <= curr_set->curr_end))) {
+    //    return 1; 
+    //}
 
 
 
@@ -278,7 +278,8 @@ route_t* get_route(int id) {
         exit(1);
     }
     // have this select from the list of pre-assigned route-sets
-    return &(route_list[id - route_offset]);
+    //return &(route_list[id - route_offset]);
+    return (route_set_list[id - route_offset]).first_route;
 }
 
 int get_g_start_time() {

@@ -8,7 +8,7 @@ fi
 
 
 MAXDIFF=4
-MAXTS=30000
+MAXTS=50000
 
 ROUTES=$1
 MAT=$2
@@ -40,7 +40,7 @@ echo "Running optimistic..."
 # Run it optimistic, lots of times
 for i in {1..1}
     do
-        mpirun -np 2 models/capacity/src/capacity --synch=3 --mat=$MAT --routes=$ROUTES --end=$MAXTS> opt.raw
+        mpirun -np 4 models/capacity/src/capacity --synch=3 --mat=$MAT --routes=$ROUTES --end=$MAXTS> opt.raw
         # break out if it fails
         if [ "$?" -ne 0 ]
         then

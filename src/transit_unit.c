@@ -254,7 +254,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             else {
                 msg->next_arrival = tw_now(lp) + delay;
             }
-            tw_output(lp, "[%.3f] TU %d: Sending depart to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
+            tw_output(lp, "\n[%.3f] TU %d: Sending depart to %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
             tw_event_send(e);
 
             // Actually we were at the end of the route
