@@ -8,7 +8,7 @@ fi
 
 
 MAXDIFF=4
-MAXTS=50000
+MAXTS=400000
 
 ROUTES=$1
 MAT=$2
@@ -24,8 +24,8 @@ rm -f base.out seq.out con.out opt.raw opt.out
 ## Run it sequential 
 echo "Running Sequential.."
 mpirun -np 1 models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$ROUTES --end=$MAXTS | grep \\\[ | grep -v "Total KPs" | sort > seq.out
-echo "Runing conservative..."
-mpirun -np 2 models/capacity/src/capacity --synch=2 --mat=$MAT --routes=$ROUTES --end=$MAXTS | grep \\\[ | grep -v "Total KPs" | sort > con.out
+echo "Running Conservative..."
+mpirun -np 4 models/capacity/src/capacity --synch=2 --mat=$MAT --routes=$ROUTES --end=$MAXTS | grep \\\[ | grep -v "Total KPs" | sort > con.out
 
 # Compare them
 diff seq.out con.out
@@ -36,11 +36,11 @@ then
     exit 1
 fi
 
-echo "Running optimistic..."
+echo "Running Optimistic..."
 # Run it optimistic, lots of times
 for i in {1..1}
     do
-        mpirun -np 4 models/capacity/src/capacity --synch=3 --mat=$MAT --routes=$ROUTES --end=$MAXTS> opt.raw
+        mpirun -np 4 models/capacity/src/capacity --synch=3 --mat=$MAT --routes=$ROUTES --end=$MAXTS --extramem=1024 > opt.raw
         # break out if it fails
         if [ "$?" -ne 0 ]
         then
