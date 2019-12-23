@@ -223,8 +223,9 @@ def extract_dates(cal_row):
     # Convert the days to just a list
     seq_list = [cal_row[x] for x in day_seq]
 
-    # start the index as none so we know if we should be incrementing the date
-    index = 0
+    # Stat the index at the current day of the week, but set start to none so 
+    # we know when service kicks in
+    index = curr_date.weekday()
     start = False
 
     date_list = []
@@ -237,8 +238,7 @@ def extract_dates(cal_row):
             date_list.append(curr_date.strftime("%Y%m%d"))
             start = True # We are getting stuff
 
-
-        # Bumb it along
+        # Bump it along
         index = (index + 1) % 7
         # If we started the counter, go ahead and bump it
         # Otherwise we spin through indices only
@@ -275,6 +275,9 @@ def generate_route(route_id, gtfs_data):
                 service_days[date].remove(service_id)
             except ValueError:
                 logging.warning("Service %s wasn't scheduled for %s but was excepted!",
+                                service_id, date)
+            except KeyError:
+                logging.warning("Service %s wasn't scheduled for %s all day but was excepted!",
                                 service_id, date)
 
     # Ok so now we know for each day what service IDs are in effect. So now,
@@ -341,6 +344,9 @@ def map_to_date(s_time, date):
     elif int(time_split[0]) == 27:
         date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
         s_time = "03:" + time_split[1] + ":" + time_split[2]
+    elif int(time_split[0]) == 28:
+        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+        s_time = "04:" + time_split[1] + ":" + time_split[2]
 
     return date + " " + s_time
 
@@ -358,7 +364,16 @@ def compute_time(x):
 
 def hash_route(route):
     """ Given a route as a list of stops and times, compute a silly hash for it"""
-    str_list = [x[0]+x[1] for x in route]
+    # Empirically, sometimes you can get the same route multiple times
+    # with slightly different times, for the hash, just check the start time
+    # along with the stops for the remainder
+    #
+    # Original full path, timing hashes
+    #str_list = [x[0]+x[1] for x in route]
+    # Less picky hash
+    str_list = [route[0][0] + route[0][1]]
+    str_list.extend([x[0] for x in route[1:]])
+
     return "".join(str_list)
  
 def gen_routes_out(data, outfile, max_time=0):
@@ -381,6 +396,7 @@ def gen_routes_out(data, outfile, max_time=0):
             for route in full_route:
                 hash_r = hash_route(route)
                 if hash_r in unique_set:
+                    logging.debug("Skipping duplicate route: %s %s", route[0][0], route[0][1]) 
                     continue
                 unique_set.add(hash_r)
                 new_routes.append(route)
