@@ -6,6 +6,8 @@ then
     exit 1
 fi 
 
+# Make a dir for nodes to dump data to
+mkdir -p out_dat
 
 MAXDIFF=4
 MAXTS=400000
