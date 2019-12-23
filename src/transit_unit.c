@@ -25,7 +25,7 @@ int initial_approach(tu_state *s, tw_lp *lp, int init) {
     int self = lp->gid;
 
     // Send an approach message to the first station on the schedule
-    fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %d\n", self, s->route->origin); 
+    fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %d at %d\n", self, s->route->origin, s->route->start_time);
     fflush(node_out_file);
 
 

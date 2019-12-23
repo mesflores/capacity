@@ -17,7 +17,7 @@ MAT=$2
 
 
 # Clean up leftovers
-rm -f base.out seq.out con.out opt.raw opt.out
+rm -f base.out seq.raw seq.out con.raw con.out opt.raw opt.out
 
 # Base run
 #models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$ROUTES --end=1382400> base.raw
@@ -25,9 +25,15 @@ rm -f base.out seq.out con.out opt.raw opt.out
 
 ## Run it sequential 
 echo "Running Sequential.."
-mpirun -np 1 models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$ROUTES --end=$MAXTS | grep \\\[ | grep -v "Total KPs" | sort > seq.out
+mpirun -np 1 models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$ROUTES --end=$MAXTS > seq.raw
+# Filter for messages that start with the bracket
+# Filter out the lines with run info from ross
+# Sort by the time stamp in the brackets
+cat seq.raw | grep \\\[ | grep -v "Total KPs" | sort -n -t[ -k2 > seq.out
+
 echo "Running Conservative..."
-mpirun -np 4 models/capacity/src/capacity --synch=2 --mat=$MAT --routes=$ROUTES --end=$MAXTS | grep \\\[ | grep -v "Total KPs" | sort > con.out
+mpirun -np 4 models/capacity/src/capacity --synch=2 --mat=$MAT --routes=$ROUTES --end=$MAXTS  > con.raw
+cat con.raw | grep \\\[ | grep -v "Total KPs" | sort -n -t[ -k2 > con.out
 
 # Compare them
 diff seq.out con.out
@@ -50,7 +56,7 @@ for i in {1..1}
             exit 1
             break
         fi
-        cat opt.raw | grep \\\[ | grep -v "Total KPs" | sort > opt.out
+        cat opt.raw | grep \\\[ | grep -v "Total KPs" | sort -n -t[ -k2 > opt.out
 
         # Compare it it to the seq/con
         diff con.out opt.out
