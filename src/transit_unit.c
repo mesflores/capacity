@@ -158,14 +158,17 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     // handle the message
     switch (in_msg->type) {
         case ST_ACK : {
+            // A station said we are good to go!
             tw_output(lp, "\n[%.3f] TU %d: ACK received from %s!\n", tw_now(lp), self, sta_name_lookup(in_msg->source));
-            //XXX XXX XXX XXX
-            // Quick sanity check...
             fprintf(node_out_file, "[TU %d] Received ack from: %ld\n", self, in_msg->source);
             fflush(node_out_file);
-            
-            //XXX XXX XXX XXX
-            // A station said we are good to go!
+           
+            if (s->curr_state != TU_APPROACH) {
+                fprintf(node_out_file, "[TU %d] Spurious Ack from: %ld (wrong state!), suspending!\n", self, in_msg->source);
+                fflush(node_out_file);
+                tw_lp_suspend(lp, 0, 0);
+                return;
+            }
     
             // Was it the station we were expecting to hear from?
             current_index = s->route_index - 1;
@@ -177,7 +180,6 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 tw_lp_suspend(lp, 0, 0);
                 return;
             }
-            
 
             // Go ahead and put yourself in alight mode 
             s->curr_state = TU_ALIGHT; 
@@ -213,15 +215,25 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             // station is all done boarding 
             fprintf(node_out_file, "[TU %d] TU P_COMPLETE: Got complete from %lu\n", self, in_msg->source); 
             fflush(node_out_file);
-            fprintf(node_out_file, "[TU %d] Current route index: %d(/%d)\n", self, s->route_index, s->route->length-1); 
-            fflush(node_out_file);
+
+            // Was this TU in the right state?
+            if (s->curr_state != TU_BOARD) {
+                fprintf(node_out_file, "[TU %d] Spurious P_COMPLETE from: %ld (bad state!) suspending!\n", self, in_msg->source);
+                fflush(node_out_file);
+                tw_lp_suspend(lp, 0, 1);
+                return;
+            }
 
             // Was that station supposed to be talking to us?
             if (in_msg->source != s->station) {
                 fprintf(node_out_file, "[TU %d] Spurious P_COMPLETE from: %ld (expected %ld) suspending!\n", self, in_msg->source, s->station);
+                fflush(node_out_file);
                 tw_lp_suspend(lp, 0, 1);
                 return;
             }
+
+            fprintf(node_out_file, "[TU %d] Current route index: %d(/%d)\n", self, s->route_index, s->route->length-1); 
+            fflush(node_out_file);
 
             // Ok tell the next station that we are on our way 
             next_station = get_next(s->route, &(s->route_index));
