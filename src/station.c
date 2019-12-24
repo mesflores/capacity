@@ -135,7 +135,9 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 add_train(in_msg->source, curr_track); 
 
                 tw_output(lp, "\n[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source); 
-                //fprintf(node_out_file, "[ST %d]: Queueing up %lu\n", self, in_msg->source);
+                fprintf(node_out_file, "[ST %d]: Queueing up %lu\n", self, in_msg->source);
+                fprintf(node_out_file, "[ST %d]: Already here: %lu\n", self, curr_track->queued_tu[0]);
+                fflush(node_out_file);
 
             } else {
                 //Go ahead and let it come in now
@@ -163,10 +165,11 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             fflush(node_out_file);
 
             // Was this train actualy in the station?
-            if (curr_track->curr_tu != in_msg->source) {
+            if ((curr_track->curr_tu != in_msg->source) {
                 // We got a board from someone that shouldnt have received the ack yet
-                //fprintf(node_out_file, "[ST %d]: Spurious TRAIN_BOARD from %ld\n", self, in_msg->source);
-                tw_lp_suspend(lp, 0, 1);
+                fprintf(node_out_file, "[ST %d]: Spurious TRAIN_BOARD from %ld\n", self, in_msg->source);
+                fflush(node_out_file);
+                tw_lp_suspend(lp, 0, 0);
                 return;
             }
 
@@ -222,9 +225,22 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             break;
         } 
         case TRAIN_DEPART : {
+
+            // Was this train actualy in the station?
+            if (curr_track->curr_tu != in_msg->source) {
+                // We got a depart from someone that shouldnt have received the ack yet
+                fprintf(node_out_file, "[ST %d]: Spurious TRAIN_DEPART from %ld\n", self, in_msg->source);
+                fflush(node_out_file);
+                tw_lp_suspend(lp, 0, 0);
+                return;
+            }
+
+
+
             tw_lpid curr_tu = 0;
             //tw_output(lp, "[%.3f] ST %d: Train %d Departing %s on track %d\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
-            //fprintf(node_out_file, "[ST %d]: Train %lu Departing %s on track %d!\n", self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
+            fprintf(node_out_file, "[ST %d]: Train %lu Departing %s on track %d!\n", self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
+            fflush(node_out_file);
             /*
             // Schedule an arrival at the next station
             // This should be safe here, since trains will never depart from a terminal
@@ -304,29 +320,34 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
             break;
         }
         case TRAIN_ARRIVE : {
-            fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_ARRIVE call from %lu!\n", self, in_msg->source);
-            fflush(node_out_file);
+            fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_ARRIVE call from %lu at track %d!\n", self, in_msg->source, curr_track->track_id);
             // If we had something queued, that means this arrival queued, clear it 
             if (curr_track->queued_tu_present > 0) {
+                fprintf(node_out_file, "[ST %d]: other trains in the station!\n", self);
+                fprintf(node_out_file, "[ST %d]: In my seat: %lu !\n", self, curr_track->queued_tu[0]);
                 pop_tail(curr_track);   
                 //curr_track->queued_tu_present = 0; // In a better world this would decrement
                 //(curr_track->queued_tu)[0] = 0;
             } else {
                 // This train was in the station
+                fprintf(node_out_file, "[ST %d]: It was just me, empty now!!\n", self);
                 curr_track->inbound = ST_EMPTY;
                 curr_track->curr_tu = 0;
             }
 
+            fflush(node_out_file);
             break;
         }
         case TRAIN_BOARD : {
-            //fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_BOARD call from %lu!\n", self, in_msg->source);
+            fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_BOARD call from %lu!\n", self, in_msg->source);
+            fflush(node_out_file);
             // TODO: Actually this is blank for now, since receiving
             // a train_board does nothing but generate a P_COMPLETE
             break;
         }
         case TRAIN_DEPART : {
-            //fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_DEPART call from %lu!\n", self, in_msg->source);
+            fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_DEPART call from %lu!\n", self, in_msg->source);
+            fflush(node_out_file);
             // No matter what, mark track as occupied
             curr_track->inbound = ST_OCCUPIED;
             curr_track->curr_tu = in_msg->source;
