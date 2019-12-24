@@ -92,33 +92,6 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
     // handle the message
     switch (in_msg->type) {
-        case P_ARRIVE : {
-            /******* Disabled ******
-            //  A new passenger has arrived at the station
-            // Pick a dest.
-            // TODO: Pick these for real...
-            // For now, send them to the last stop
-            int dest = 9;
-
-            tw_output(lp, "[%f] Passenger arriving at %d!\n", tw_now(lp), self);
-            passenger_t* new_pass = create_passenger(self, dest, tw_now(lp));
-
-            // Put him in the list
-            new_pass->next = s->pass_list;
-            s->pass_list = new_pass;
-
-            // Sechedule the next arrival
-            // TODO Pick a better inter-pass-arrival time
-            tw_event *e = tw_event_new(self, 3, lp);
-            message *msg = tw_event_data(e);
-            msg->type = P_ARRIVE;
-            // All these passengers got on here I guess
-            msg->source = self;
-            // TODO: reactivate
-            //tw_event_send(e);
-            ************************/
-            break;
-        }
         case TRAIN_ARRIVE : {
             tw_output(lp, "\n[%.3f] ST %d: Train %d arriving at %s on track %d!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
                  
@@ -164,26 +137,66 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
             break;
         }
+        case P_ARRIVE : {
+            fprintf(node_out_file, "[ST %d]: P_Arrive from %lu\n", self, in_msg->source);
+            fflush(node_out_file);
+            /******* Disabled ******
+            //  A new passenger has arrived at the station
+            // Pick a dest.
+            // TODO: Pick these for real...
+            // For now, send them to the last stop
+            int dest = 9;
+
+            tw_output(lp, "[%f] Passenger arriving at %d!\n", tw_now(lp), self);
+            passenger_t* new_pass = create_passenger(self, dest, tw_now(lp));
+
+            // Put him in the list
+            new_pass->next = s->pass_list;
+            s->pass_list = new_pass;
+
+            // Sechedule the next arrival
+            // TODO Pick a better inter-pass-arrival time
+            tw_event *e = tw_event_new(self, 3, lp);
+            message *msg = tw_event_data(e);
+            msg->type = P_ARRIVE;
+            // All these passengers got on here I guess
+            msg->source = self;
+            // TODO: reactivate
+            //tw_event_send(e);
+            ************************/
+            break;
+        }
         case TRAIN_BOARD : {
             // Passengers have finished alighting, waiting passengers can board
             // TODO: Loop to send some boarding messages
             fprintf(node_out_file, "[ST %d]: Received TRAIN_BOARD from %ld\n", self, in_msg->source);
             fflush(node_out_file);
 
-            // Was this train actualy in the station?
-            if (curr_track->curr_tu != in_msg->source) {
-                // We got a board from someone that shouldnt have received the ack yet
-                fprintf(node_out_file, "[ST %d]: Spurious TRAIN_BOARD from %ld\n", self, in_msg->source);
+            // First check that we are in the right state
+            if (curr_track->inbound != ST_OCCUPIED) {
+                // It was in a weird state, suspend
+                fprintf(node_out_file, "[ST %d]: TRAIN_BOARD but I wasnt in occuppied from %ld - suspend\n", self, in_msg->source);
                 fflush(node_out_file);
                 tw_lp_suspend(lp, 0, 0);
                 return;
             }
 
+            // Was this train actualy in the station?
+            if (curr_track->curr_tu != in_msg->source) {
+                // We got a board from someone that shouldnt have received the ack yet
+                fprintf(node_out_file, "[ST %d]: Spurious TRAIN_BOARD from %ld (not in station)\n", self, in_msg->source);
+                fflush(node_out_file);
+                tw_lp_suspend(lp, 0, 0);
+                return;
+            }
 
+            // Set mode to boarding
+            curr_track->inbound = ST_BOARDING;
 
             passenger_t* prev_pass = NULL;
             passenger_t* curr_pass = s->pass_list;
-   
+
+#if 0
             // Ok we have somebody to check
             // XXX XXX XXX I think this might be very hard to do backwards... XXX XXX XXX
             if (curr_pass != NULL) {
@@ -216,6 +229,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                     curr_pass = curr_pass->next;
                 }
             }
+#endif
             // Ok so if we made it here, either: no passengers or the ones that are here shouldnt board
 
 
@@ -231,6 +245,14 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             break;
         } 
         case TRAIN_DEPART : {
+            // Are we in the right state for this?
+            if (curr_track->inbound != ST_BOARDING) {
+                // We got a depart from someone that shouldnt have received the ack yet
+                fprintf(node_out_file, "[ST %d]: Spurious TRAIN_DEPART (wrong state) from %ld\n", self, in_msg->source);
+                fflush(node_out_file);
+                tw_lp_suspend(lp, 0, 0);
+                return;
+            }
 
             // Was this train actualy in the station?
             if (curr_track->curr_tu != in_msg->source) {
@@ -347,15 +369,16 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
         case TRAIN_BOARD : {
             fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_BOARD call from %lu!\n", self, in_msg->source);
             fflush(node_out_file);
-            // TODO: Actually this is blank for now, since receiving
+            // TODO: Actually this is incomplete for now, since receiving
             // a train_board does nothing but generate a P_COMPLETE
+            curr_track->inbound = ST_OCCUPIED;
             break;
         }
         case TRAIN_DEPART : {
             fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_DEPART call from %lu!\n", self, in_msg->source);
             fflush(node_out_file);
-            // No matter what, mark track as occupied
-            curr_track->inbound = ST_OCCUPIED;
+            // No matter what, mark track as back in boarding
+            curr_track->inbound = ST_BOARDING;
             curr_track->curr_tu = in_msg->source;
             // Was that train ever queued?
             // If so, we need to put them back in the queue, otherwise, nothing

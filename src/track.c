@@ -50,7 +50,7 @@ int add_train(tw_lpid new_train, track_t* track) {
         fprintf(node_out_file, "Station queue exceeded!\n");
         fprintf(node_out_file, "Dumping queue: ");
         for (i=0; i < QUEUE_LEN; i++) {
-            fprintf(node_out_file, "%lu", track->queued_tu[i]);
+            fprintf(node_out_file, "%lu ", track->queued_tu[i]);
         }
         fprintf(node_out_file, "\n");
         fflush(node_out_file);
