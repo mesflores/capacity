@@ -74,8 +74,9 @@ fi
 
 echo "Running Optimistic..."
 # Run it optimistic, lots of times
-for i in {1..$REPS}
+for i in $(seq $REPS)
     do
+        echo -e "\t$i..."
         mpirun -np $PROCS models/capacity/src/capacity --synch=3 --mat=$MAT --routes=$ROUTES --end=$MAXTS --extramem=1024 > opt.raw
         # break out if it fails
         if [ "$?" -ne 0 ]
