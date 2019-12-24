@@ -127,8 +127,14 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             
             // First, check to see what our state is
             if ((curr_track->inbound == ST_OCCUPIED) || (curr_track->inbound == ST_BOARDING)) {
-                // If we are currently occupied, put the TU in the queue for 
-                // notification when the state transitions to empty
+                // If the current track is occupied by us, well that's 
+                // bad, go ahead and suspend
+                if (curr_track->queued_tu[0] == in_msg->source){
+                    fprintf(node_out_file, "[ST %d]: Spurious TRAIN_ARRIVE from %ld\n", self, in_msg->source);
+                    fflush(node_out_file);
+                    tw_lp_suspend(lp, 0, 0);
+                    return;
+                }
 
                 // If we are currently occupied, put the TU in the queue for 
                 // notification when the state transitions to empty
@@ -165,7 +171,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             fflush(node_out_file);
 
             // Was this train actualy in the station?
-            if ((curr_track->curr_tu != in_msg->source) {
+            if (curr_track->curr_tu != in_msg->source) {
                 // We got a board from someone that shouldnt have received the ack yet
                 fprintf(node_out_file, "[ST %d]: Spurious TRAIN_BOARD from %ld\n", self, in_msg->source);
                 fflush(node_out_file);
