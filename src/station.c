@@ -165,7 +165,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             fflush(node_out_file);
 
             // Was this train actualy in the station?
-            if ((curr_track->curr_tu != in_msg->source) {
+            if (curr_track->curr_tu != in_msg->source) {
                 // We got a board from someone that shouldnt have received the ack yet
                 fprintf(node_out_file, "[ST %d]: Spurious TRAIN_BOARD from %ld\n", self, in_msg->source);
                 fflush(node_out_file);
