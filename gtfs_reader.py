@@ -36,17 +36,26 @@ def read_gtfs_files(data_dir):
 
 def parse_gtfs_file(raw_file, key_column):
     """Parse a GTFS file, with key column being the unique key"""
-    parse_info = {}
+    # If there is no unique key, return a list
+    if key_column is None:
+        parse_info = []
+    else:
+        parse_info = {}
 
     reader = csv.DictReader(raw_file.splitlines())
     for row in reader:
-        # Get the key value
-        key_val = row[key_column]
-        parse_info[key_val] = {}
 
-        # Loop through the rest
-        for row_key in row:
-            parse_info[key_val][row_key] = row[row_key]
+        if key_column is None:
+            parse_info.append(row)
+        else:
+            # Get the key value
+            key_val = row[key_column]
+            parse_info[key_val] = {}
+
+            # Loop through the rest
+            for row_key in row:
+                parse_info[key_val][row_key] = row[row_key]
+
     return parse_info
 
 def filter_stops(stop_info):
@@ -190,7 +199,7 @@ def load_gtfs_data(data_dir):
     calendar = parse_gtfs_file(raw_data["calendar"], "service_id")
 
     logging.info("Parsing Calendar Dates...")
-    calendar_dates = parse_gtfs_file(raw_data["calendar_dates"], "service_id")
+    calendar_dates = parse_gtfs_file(raw_data["calendar_dates"], None)
 
     logging.info("Building minimum adjacencey matrix...")
     adj_matrix = build_stop_adj_matrix(stop_times)
@@ -264,9 +273,10 @@ def generate_route(route_id, gtfs_data):
                 service_days[date] = [service_id,]
 
     # Ok, now let's go through the exceptions
-    for service_id in gtfs_data["calendar_dates"]:
-        e_type = gtfs_data["calendar_dates"][service_id]["exception_type"]
-        date = gtfs_data["calendar_dates"][service_id]["date"]
+    for exception in gtfs_data["calendar_dates"]:
+        service_id = exception["service_id"]
+        e_type = exception["exception_type"]
+        date = exception["date"]
 
         if e_type == "1":
             service_days[date].append(service_id)
@@ -396,7 +406,7 @@ def gen_routes_out(data, outfile, max_time=0):
             for route in full_route:
                 hash_r = hash_route(route)
                 if hash_r in unique_set:
-                    logging.debug("Skipping duplicate route: %s %s", route[0][0], route[0][1]) 
+                    logging.warning("Skipping duplicate route: %s %s", route[0][0], route[0][1])
                     continue
                 unique_set.add(hash_r)
                 new_routes.append(route)
