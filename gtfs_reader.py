@@ -245,20 +245,14 @@ def extract_dates(cal_row):
         # yes!
         if seq_list[index] == "1":
             date_list.append(curr_date.strftime("%Y%m%d"))
-            start = True # We are getting stuff
 
         # Bump it along
         index = (index + 1) % 7
-        # If we started the counter, go ahead and bump it
-        # Otherwise we spin through indices only
-        if start:
-            curr_date = curr_date + datetime.timedelta(days=1)
+        curr_date = curr_date + datetime.timedelta(days=1)
 
     return date_list
 
-def generate_route(route_id, gtfs_data):
-    """For a given route, spin through stop times and build longest version """
-
+def build_service_set(gtfs_data):
     # The master dict of days
     service_days = {}
 
@@ -289,7 +283,10 @@ def generate_route(route_id, gtfs_data):
             except KeyError:
                 logging.warning("Service %s wasn't scheduled for %s all day but was excepted!",
                                 service_id, date)
+    return service_days
 
+def generate_route(route_id, service_days, gtfs_data):
+    """For a given route, spin through stop times and build longest version """
     # Ok so now we know for each day what service IDs are in effect. So now,
     # we'll spin over the days. For each day, we'll figure out which trips
     # correspond to those service IDs, then we'll actually dig out the specific
@@ -399,8 +396,11 @@ def gen_routes_out(data, outfile, max_time=0):
 
         # Now the specific routes
         unique_set = set()
+
+        service_days = build_service_set(data)
+
         for route_set in data["routes"]:
-            full_route = generate_route(route_set, data)
+            full_route = generate_route(route_set, service_days, data)
             new_routes = []
             # NOTE: Something can result in dupes, de dupe it!
             for route in full_route:
