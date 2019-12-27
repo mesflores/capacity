@@ -40,7 +40,7 @@ existing parser filters for duplicates, it only removed exact matches: these
 duplicates featured identical starting times and stations, but about halfway
 through the run one version was a minute slower than the other.[^footnote]
 
- [^footnote]: In the LA Metro data, this appeared in the 3rd week in December on the Gold line departing Atlantic.]
+ [^footnote]: ~In the LA Metro data, this appeared in the 3rd week in December on the Gold line departing Atlantic.~]
 
 Ultimately, this created a strange tie for the simulator, and while the
 sequential execution sorted this deterministically, the optimistic did not,
@@ -50,6 +50,10 @@ Currently, this issue has been solved by relaxing the match conditions on the
 de-duplication in the GTFS parsing. Ideally, it might be best to do this within
 Capacity itself. For now, however, I've opted to keep the parsing code as
 simple as possible in the main program.
+
+_Update_: I need to redact my claim of any issue with the GTFS! This was the result 
+of a sneaky bug in my parsers for the `calendar_dates.txt` file, which assumed that 
+the `service_id` field was a unique-key in that context. It very much is not!
 
 ## Too Many LPs
 
