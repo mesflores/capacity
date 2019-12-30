@@ -313,7 +313,8 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             next_msg->type = TRAIN_ARRIVE;
             next_msg->source = self;
             next_msg->prev_station = s->station;
-            //fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %lu\n", self, next_station); 
+            fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %lu with prev %lu\n", self, next_station, s->station); 
+            fflush(node_out_file);
             //tw_output(lp, "[%.3f] TU %d: Sending approach to %s!\n", tw_now(lp), self, sta_name_lookup(next_station));
             tw_event_send(approach);
             break;
@@ -345,7 +346,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             break;
         }
         default :
-            fprintf(node_out_file, "TU %d: Unhandeled forward message type %d\n", self, in_msg->type);
+            fprintf(node_out_file, "[TU %d]: Unhandeled forward message type %d\n", self, in_msg->type);
     }
 
 
@@ -432,6 +433,7 @@ void transit_unit_final (tu_state *s, tw_lp *lp){
 //Given an LP's GID (global ID)
 //return the PE (aka node, MPI Rank)
 tw_peid transit_unit_map(tw_lpid gid){
-    return (tw_peid) gid / g_tw_nlp;
+    //return (tw_peid) gid / g_tw_nlp;
+    return (tw_peid) gid % tw_nnodes();
 }
 

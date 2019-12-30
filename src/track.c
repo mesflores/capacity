@@ -18,8 +18,9 @@ track_t* track_map(int curr_station, int prev_station, station_state* s, message
         return &(s->right);
         // This is basically an assert...
     } else {
-        fprintf(node_out_file, "Proccing a %d %d", in_msg-> type, TRAIN_BOARD);
-        fprintf(node_out_file, "[%ld] Invalid matching stations: curr: %d prev: %d\n", g_tw_mynode, curr_station, prev_station);
+        fprintf(node_out_file, "[ST %d] Proccessing a %d\n", curr_station, in_msg-> type);
+        fprintf(node_out_file, "[ST %d] Invalid matching stations: curr: %d prev: %d\n", curr_station, curr_station, prev_station);
+        fflush(node_out_file);
         exit(-1);
     }
 }

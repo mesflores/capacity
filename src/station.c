@@ -33,6 +33,7 @@ void SWAP_SHORT (short *a, short *b) {
 void station_init (station_state *s, tw_lp *lp) {
     int self = lp->gid;
 
+    fprintf(node_out_file, "[ST %d]: Init station!!\n", self);
     // init state data
     s->left.track_id = 0;
     s->left.inbound = ST_EMPTY; 
@@ -88,6 +89,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     // SWAP(&(s->last_arr), &(in_msg->passenger_count));
 
     // Look up what track the message came from
+    fprintf(node_out_file, "[ST %d]: Received a %d from %lu!\n", self, in_msg->type, in_msg->source);
     curr_track = track_map(self, in_msg->prev_station, s, in_msg);
 
     // handle the message
@@ -328,7 +330,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
         }
         default :
-            fprintf(node_out_file, "Station Unhandeled forward message type %d\n", in_msg->type);
+            fprintf(node_out_file, "[ST %d] Station Unhandeled forward message type %d\n", self, in_msg->type);
     }
 
 }
@@ -409,6 +411,7 @@ void station_final (station_state *s, tw_lp *lp){
 //Given an LP's GID (global ID)
 //return the PE (aka node, MPI Rank)
 tw_peid station_map(tw_lpid gid){
-    return (tw_peid) gid / g_tw_nlp;
+    //return (tw_peid) gid / g_tw_nlp;
+    return (tw_peid) gid % tw_nnodes();
 }
 

@@ -11,6 +11,12 @@
 
 extern void SWAP (int *a, int *b);
 
+/****** Custom mapping prototypes *******/
+void model_custom_mapping_linear(void);
+void model_custom_mapping_rr(void);
+tw_lp * model_mapping_to_lp(tw_lpid lpid);
+tw_lp * model_mapping_to_lp_rr(tw_lpid lpid);
+
 /********* Shared components across LPs *****/
 extern FILE * node_out_file;
 
