@@ -3,6 +3,7 @@
 // Functions for the transit_unit LP
 
 //Includes
+#include <math.h>
 #include <stdio.h>
 
 #include "ross.h"
@@ -23,9 +24,12 @@ void SWAP_UL (unsigned long *a, unsigned long *b) {
  */
 int initial_approach(tu_state *s, tw_lp *lp, int init) {
     int self = lp->gid;
+    float start_time;
+
+    start_time = fmaxf((float)(s->start) - tw_now(lp), CONTROL_EPOCH);
 
     // Send an approach message to the first station on the schedule
-    fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %d at %d\n", self, s->route->origin, s->route->start_time);
+    fprintf(node_out_file, "[TU %d] TU sending TRAIN_ARRIVE to %d for %2.2f at %2.2f\n", self, s->route->origin, start_time, tw_now(lp));
     fflush(node_out_file);
 
 
@@ -37,8 +41,9 @@ int initial_approach(tu_state *s, tw_lp *lp, int init) {
         msg->prev_station = s->prev_station;
         tw_event_send(e);
     } else {
+
         tw_output(lp, "\n[%.3f] TU %d: Starting new route at %d at %d\n", tw_now(lp), self, s->route->origin, s->start);
-        tw_event *e = tw_event_new(s->route->origin, (float)(s->start) - tw_now(lp), lp);
+        tw_event *e = tw_event_new(s->route->origin, start_time, lp);
         message *msg = tw_event_data(e);
         msg->type = TRAIN_ARRIVE ;
         msg->source = self;

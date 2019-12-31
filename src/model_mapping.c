@@ -21,7 +21,7 @@ tw_lpid model_typemap (tw_lpid gid) {
 // - no LPs are unused
 // - event activity is balanced
 extern unsigned int nkp_per_pe;
-#define VERIFY_MAPPING 1 //useful for debugging
+//#define VERIFY_MAPPING 1 //useful for debugging
 //This function maps LPs to KPs on PEs and is called at the start
 //This example is the same as Linear Mapping
 void model_custom_mapping_linear(void){
@@ -151,15 +151,6 @@ tw_lp * model_mapping_to_lp(tw_lpid lpid){
 //Given a gid, return the local LP (global id => local id mapping)
 tw_lp * model_mapping_to_lp_rr(tw_lpid lpid){
     int local_id = lpid / tw_nnodes();
-    fprintf(node_out_file, "mapped %4lu to %4d\n", lpid, local_id);
-    fprintf(node_out_file, "Input  %4lu Reverse  %4lu\n", lpid, g_tw_lp[local_id]->gid);
-    fflush(node_out_file);
-
-    //if (lpid != g_tw_lp[local_id]->gid)
-    //    fflush(node_out_file);
-    //    tw_error(TW_LOC, "Inconsistent LP Mapping");
-
-
     return g_tw_lp[local_id];
 }
 
