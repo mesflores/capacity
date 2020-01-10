@@ -311,15 +311,6 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 fprintf(node_out_file, "[TU %d] prev_station %lu\n", self, s->prev_station);
 #endif
 
-                //XXX XXX XXX
-                // Store all the old shit
-                s->old_route = s->route;
-                s->old_route_index = s->route_index;
-                s->old_prev_station = s->prev_station;
-                s->old_station = s->station;
-                s->old_start = s->start;
-                //XXX XXX XXX
-
                 if (advance_route(s, lp) == 0) {
                     tw_output(lp, "\n[%.3f] TU %d: Starting fresh route!\n", tw_now(lp), self);
                     initial_approach(s, lp, 1);
@@ -440,12 +431,6 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
                 fprintf(node_out_file, "[TU %d] station %lu\n", self, s->station);
                 fprintf(node_out_file, "[TU %d] prev_station %lu\n", self, s->prev_station);
                 fprintf(node_out_file, "[TU %d] start %d\n", self, s->start);
-                //XXX
-                fprintf(node_out_file, "[TU %d] old route index %d\n", self, s->old_route_index);
-                fprintf(node_out_file, "[TU %d] old station %lu\n", self, s->old_station);
-                fprintf(node_out_file, "[TU %d] old prev_station %lu\n", self, s->old_prev_station);
-                fprintf(node_out_file, "[TU %d] old start %d\n", self, s->old_start);
-                //XXX
                 fflush(node_out_file);
 #endif
 
