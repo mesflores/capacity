@@ -22,7 +22,7 @@ tw_lptype model_lps[] = {
     (revent_f) station_event_reverse,
     (commit_f) NULL,
     (final_f) station_final,
-    (map_f) station_map,
+    (map_f) lp_map_rr,
     sizeof(station_state)
   },
   {
@@ -32,7 +32,7 @@ tw_lptype model_lps[] = {
     (revent_f) transit_unit_event_reverse,
     (commit_f) NULL,
     (final_f) transit_unit_final,
-    (map_f) transit_unit_map,
+    (map_f) lp_map_rr,
     sizeof(tu_state)
   },
   { 0 },
@@ -72,10 +72,11 @@ int capacity_main (int argc, char* argv[]) {
 
     // Create files for debugging
     char debugfilename[100];
+#if DEBUG_FILE_OUTPUT
     sprintf(debugfilename, "out_dat/node_%ld_output_file.txt", g_tw_mynode);
     node_out_file = fopen(debugfilename, "w");
-
     fprintf(node_out_file, "PID: %d\n", getpid());
+#endif
 
     // Init the global vars
     graph_init(g_adj_mat_fn);

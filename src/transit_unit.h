@@ -26,5 +26,4 @@ extern void transit_unit_event(tu_state *s, tw_bf *bf, message *in_msg, tw_lp *l
 extern void transit_unit_event_reverse(tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void transit_unit_final(tu_state *s, tw_lp *lp);
 
-extern tw_peid station_map(tw_lpid gid);
-#ndif
+#endif

@@ -4,6 +4,15 @@
 #include "passenger.h"
 #include "model.h"
 
+//Given an LP's GID (global ID)
+//return the PE (aka node, MPI Rank)
+tw_peid lp_map_linear(tw_lpid gid){
+    return (tw_peid) gid / g_tw_nlp;
+}
+tw_peid lp_map_rr(tw_lpid gid){
+    return (tw_peid) gid % tw_nnodes();
+}
+
 // Multiple LP Types mapping function
 //    Given an LP's GID
 //    Return the index in the LP type array (defined in model_main.c)
@@ -106,7 +115,6 @@ void model_custom_mapping_rr(void){
 
     // Do all the KPs first
     for(i = 0; i < nkp_per_pe; i++) {
-        fprintf(node_out_file, "\tKP %d\n", i);
         tw_kp_onpe(i, g_tw_pe);
     }
 

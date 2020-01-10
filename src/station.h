@@ -44,6 +44,4 @@ extern void station_init(state *s, tw_lp *lp, satation_state *s);
 extern void station_event(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void station_event_reverse(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void station_final(state *s, tw_lp *lp);
-// defined in model_map.c:
-extern tw_peid station_map(tw_lpid gid);
 #endif
