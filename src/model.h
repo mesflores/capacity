@@ -1,4 +1,3 @@
-
 // model.h
 // type definitions for all the LP types
 
@@ -7,9 +6,17 @@
 
 #define CONTROL_EPOCH .006
 
-#define QUEUE_LEN 50
+#define QUEUE_LEN 100
 
 extern void SWAP (int *a, int *b);
+
+/****** Custom mapping prototypes *******/
+void model_custom_mapping_linear(void);
+void model_custom_mapping_rr(void);
+tw_lp * model_mapping_to_lp(tw_lpid lpid);
+tw_lp * model_mapping_to_lp_rr(tw_lpid lpid);
+extern tw_peid lp_map_linear(tw_lpid gid);
+extern tw_peid lp_map_rr(tw_lpid gid);
 
 /********* Shared components across LPs *****/
 extern FILE * node_out_file;
@@ -138,6 +145,7 @@ typedef struct {
     int pass_count;
 
     int min_time; // the minimum arrival time at next station
+
 } tu_state;
 
 //Function Declarations

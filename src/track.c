@@ -18,8 +18,11 @@ track_t* track_map(int curr_station, int prev_station, station_state* s, message
         return &(s->right);
         // This is basically an assert...
     } else {
-        fprintf(node_out_file, "Proccing a %d %d", in_msg-> type, TRAIN_BOARD);
-        fprintf(node_out_file, "[%ld] Invalid matching stations: curr: %d prev: %d\n", g_tw_mynode, curr_station, prev_station);
+#if DEBUG_FILE_OUTPUT
+        fprintf(node_out_file, "[ST %d] Proccessing a %d\n", curr_station, in_msg-> type);
+        fprintf(node_out_file, "[ST %d] Invalid matching stations: curr: %d prev: %d\n", curr_station, curr_station, prev_station);
+        fflush(node_out_file);
+#endif
         exit(-1);
     }
 }
@@ -32,7 +35,10 @@ track_t* track_map_rev(int curr_station, int prev_station, station_state* s, mes
         return &(s->right);
         // This is basically an assert...
     } else {
+#if DEBUG_FILE_OUTPUT
         fprintf(node_out_file, "Invalid matching stations: curr: %d prev: %d, state %d\n", curr_station, prev_station, in_msg->type);
+        fflush(node_out_file);
+#endif
         exit(-1);
     }
 }
@@ -43,11 +49,20 @@ int add_train(tw_lpid new_train, track_t* track) {
     // if queued_tu_present is 0, add to 0
     // if 1, it means 1 train already here, add to 1
     int index = track->queued_tu_present;
+    int i=0;
 
     // Sanity check that it hasn't filled up
     if (index >= QUEUE_LEN - 1) {
+#if DEBUG_FILE_OUTPUT
         fprintf(node_out_file, "Station queue exceeded!\n");
-        exit(-1);
+        fprintf(node_out_file, "Dumping queue: ");
+        for (i=0; i < QUEUE_LEN; i++) {
+            fprintf(node_out_file, "%lu ", track->queued_tu[i]);
+        }
+        fprintf(node_out_file, "\n");
+        fflush(node_out_file);
+#endif
+        tw_error(TW_LOC, "Station queue exceeded!");
     }
 
     // Add it in

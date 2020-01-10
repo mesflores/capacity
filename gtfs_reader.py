@@ -36,17 +36,26 @@ def read_gtfs_files(data_dir):
 
 def parse_gtfs_file(raw_file, key_column):
     """Parse a GTFS file, with key column being the unique key"""
-    parse_info = {}
+    # If there is no unique key, return a list
+    if key_column is None:
+        parse_info = []
+    else:
+        parse_info = {}
 
     reader = csv.DictReader(raw_file.splitlines())
     for row in reader:
-        # Get the key value
-        key_val = row[key_column]
-        parse_info[key_val] = {}
 
-        # Loop through the rest
-        for row_key in row:
-            parse_info[key_val][row_key] = row[row_key]
+        if key_column is None:
+            parse_info.append(row)
+        else:
+            # Get the key value
+            key_val = row[key_column]
+            parse_info[key_val] = {}
+
+            # Loop through the rest
+            for row_key in row:
+                parse_info[key_val][row_key] = row[row_key]
+
     return parse_info
 
 def filter_stops(stop_info):
@@ -190,7 +199,7 @@ def load_gtfs_data(data_dir):
     calendar = parse_gtfs_file(raw_data["calendar"], "service_id")
 
     logging.info("Parsing Calendar Dates...")
-    calendar_dates = parse_gtfs_file(raw_data["calendar_dates"], "service_id")
+    calendar_dates = parse_gtfs_file(raw_data["calendar_dates"], None)
 
     logging.info("Building minimum adjacencey matrix...")
     adj_matrix = build_stop_adj_matrix(stop_times)
@@ -223,8 +232,9 @@ def extract_dates(cal_row):
     # Convert the days to just a list
     seq_list = [cal_row[x] for x in day_seq]
 
-    # start the index as none so we know if we should be incrementing the date
-    index = 0
+    # Stat the index at the current day of the week, but set start to none so 
+    # we know when service kicks in
+    index = curr_date.weekday()
     start = False
 
     date_list = []
@@ -235,21 +245,14 @@ def extract_dates(cal_row):
         # yes!
         if seq_list[index] == "1":
             date_list.append(curr_date.strftime("%Y%m%d"))
-            start = True # We are getting stuff
 
-
-        # Bumb it along
+        # Bump it along
         index = (index + 1) % 7
-        # If we started the counter, go ahead and bump it
-        # Otherwise we spin through indices only
-        if start:
-            curr_date = curr_date + datetime.timedelta(days=1)
+        curr_date = curr_date + datetime.timedelta(days=1)
 
     return date_list
 
-def generate_route(route_id, gtfs_data):
-    """For a given route, spin through stop times and build longest version """
-
+def build_service_set(gtfs_data):
     # The master dict of days
     service_days = {}
 
@@ -264,9 +267,10 @@ def generate_route(route_id, gtfs_data):
                 service_days[date] = [service_id,]
 
     # Ok, now let's go through the exceptions
-    for service_id in gtfs_data["calendar_dates"]:
-        e_type = gtfs_data["calendar_dates"][service_id]["exception_type"]
-        date = gtfs_data["calendar_dates"][service_id]["date"]
+    for exception in gtfs_data["calendar_dates"]:
+        service_id = exception["service_id"]
+        e_type = exception["exception_type"]
+        date = exception["date"]
 
         if e_type == "1":
             service_days[date].append(service_id)
@@ -276,7 +280,13 @@ def generate_route(route_id, gtfs_data):
             except ValueError:
                 logging.warning("Service %s wasn't scheduled for %s but was excepted!",
                                 service_id, date)
+            except KeyError:
+                logging.warning("Service %s wasn't scheduled for %s all day but was excepted!",
+                                service_id, date)
+    return service_days
 
+def generate_route(route_id, service_days, gtfs_data):
+    """For a given route, spin through stop times and build longest version """
     # Ok so now we know for each day what service IDs are in effect. So now,
     # we'll spin over the days. For each day, we'll figure out which trips
     # correspond to those service IDs, then we'll actually dig out the specific
@@ -341,6 +351,9 @@ def map_to_date(s_time, date):
     elif int(time_split[0]) == 27:
         date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
         s_time = "03:" + time_split[1] + ":" + time_split[2]
+    elif int(time_split[0]) == 28:
+        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+        s_time = "04:" + time_split[1] + ":" + time_split[2]
 
     return date + " " + s_time
 
@@ -352,6 +365,24 @@ def gen_matrix_out(adj_matrix, outfile):
             for dst in adj_matrix[src]:
                 out_f.write("%s %s %d\n"%(src, dst, adj_matrix[src][dst]))
 
+def compute_time(x):
+    """ Given a formated time, compute epoch"""
+    return int(datetime.datetime.strptime(x, "%Y%m%d %H:%M:%S").timestamp())
+
+def hash_route(route):
+    """ Given a route as a list of stops and times, compute a silly hash for it"""
+    # Empirically, sometimes you can get the same route multiple times
+    # with slightly different times, for the hash, just check the start time
+    # along with the stops for the remainder
+    #
+    # Original full path, timing hashes
+    #str_list = [x[0]+x[1] for x in route]
+    # Less picky hash
+    str_list = [route[0][0] + route[0][1]]
+    str_list.extend([x[0] for x in route[1:]])
+
+    return "".join(str_list)
+ 
 def gen_routes_out(data, outfile, max_time=0):
     """ Generate route info for runs described in GTFS"""
     with open(outfile, 'w') as out_f:
@@ -364,22 +395,38 @@ def gen_routes_out(data, outfile, max_time=0):
         full_route_list = []
 
         # Now the specific routes
-        for route in data["routes"]:
-            full_route_list.extend(generate_route(route, data))
+        unique_set = set()
+
+        service_days = build_service_set(data)
+
+        for route_set in data["routes"]:
+            full_route = generate_route(route_set, service_days, data)
+            new_routes = []
+            # NOTE: Something can result in dupes, de dupe it!
+            for route in full_route:
+                hash_r = hash_route(route)
+                if hash_r in unique_set:
+                    logging.warning("Skipping duplicate route: %s %s", route[0][0], route[0][1])
+                    continue
+                unique_set.add(hash_r)
+                new_routes.append(route)
+            full_route_list.extend(new_routes)
 
         out_f.write("%d\n"%(len(full_route_list)))
 
-        for route in full_route_list:
-            # Write the seperator
+        for route in sorted(full_route_list, key=lambda x: compute_time(x[0][1])):
             # Write the start time in epoch
-            start_time = int(datetime.datetime.strptime(route[0][1], "%Y%m%d %H:%M:%S").timestamp())
+            start_time = compute_time(route[0][1])
 
             if (max_time and (start_time - min_stamp > max_time)):
                 continue
-
-            out_f.write("%d\n"%(start_time))
+    
+            # Now that we write the time at each stop, we don't need stand along starts
+            #out_f.write("%d\n"%(start_time))
             for stop, s_time in route:
-                out_f.write("%s "%stop)
+                # Let's make a nice epoch version of the stop time
+                s_epoch = compute_time(s_time)
+                out_f.write("%s,%s "%(stop, s_epoch))
             out_f.write("\n")
 
 if __name__ == "__main__":
