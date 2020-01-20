@@ -80,7 +80,7 @@ def filter_stops(stop_info):
 
     return new_stop_info
 
-def load_stop_times(stop_times_file):
+def load_stop_times(stop_times_file, filter_set=None):
     """Load the stop times into a big dict"""
     # NOTE: This is maybe possible with the above parsing function, but
     # would be a little complicated since there is no key in the same way, and
@@ -97,7 +97,12 @@ def load_stop_times(stop_times_file):
             # Get the trip_id
             data_row = line.split(",")
             trip_id = data_row[key_index]
-    
+
+            # Check the filter set. Unilike the other files, this filter set
+            # can only work on the trip_ids
+            if filter_set is not None and trip_id not in filter_set:
+                continue
+
             # did we have this?
             if trip_id not in stop_times:
                 stop_times[trip_id] = []
@@ -197,6 +202,21 @@ def load_gtfs_data(data_dir, route_types):
                                  filter_set=route_types,
                                  filter_col="route_type")
 
+    # Build a filter set for trips
+    route_ids = {route_id for route_id in route_info}
+
+    logging.info("Parsing Trips...")
+    trip_info = parse_gtfs_file(raw_files["trips"], "trip_id",
+                                filter_set=route_ids,
+                                filter_col="route_id")
+    
+    # Build a filter set for the stop times
+    trip_ids = {trip_id for trip_id in trip_info}
+
+    logging.info("Parsing Stop Times...")
+    stop_times = load_stop_times(raw_files["stop_times"],
+                                 filter_set=trip_ids)
+
     # Load the set of stops
     logging.info("Parsing Stops...")
     stop_info = parse_gtfs_file(raw_files["stops"], "stop_id")
@@ -204,11 +224,6 @@ def load_gtfs_data(data_dir, route_types):
     # NOTE: This may not be correct for all systems!
     stop_info = filter_stops(stop_info)
 
-    logging.info("Parsing Trips...")
-    trip_info = parse_gtfs_file(raw_files["trips"], "trip_id")
-
-    logging.info("Parsing Stop Times...")
-    stop_times = load_stop_times(raw_files["stop_times"])
 
     logging.info("Parsing Calendar...")
     calendar = parse_gtfs_file(raw_files["calendar"], "service_id")
