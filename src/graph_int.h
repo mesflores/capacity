@@ -4,7 +4,7 @@
 #define _graph_internal_h
 
 // Maximum number of stations
-#define STA_MAX 256
+#define STA_MAX 512
 #define MAX_NAME_LEN 128
 
 // The graph object itself

@@ -23,11 +23,33 @@ def read_gtfs_files(data_dir):
         "calendar_dates",
     ]
 
+    gtfs_optional_files = [
+        "transfers",
+    ]
+
+    # Build a dict of all the required file names
     for gtfs_file in gtfs_req_files:
         # build the actual file name
         file_name = gtfs_file + ".txt"
         file_name = os.path.join(data_dir, file_name)
         gtfs_info[gtfs_file] = file_name
+
+        if not os.path.isfile(file_name):
+            logging.error("Missing file %s", file_name)
+            raise RuntimeError("Missing file %s"%(file_name))
+
+    # Now do the optional
+    for gtfs_file in gtfs_optional_files:
+        # build the actual file name
+        file_name = gtfs_file + ".txt"
+        file_name = os.path.join(data_dir, file_name)
+
+        # Here, not existing isnt an error and it doesnt add the path
+        # (Since it doesnt exist)
+        if not os.path.isfile(file_name):
+            logging.info("Optional file %s not found, skipping", file_name)
+        else:
+            gtfs_info[gtfs_file] = file_name
 
     return gtfs_info
 
@@ -44,9 +66,6 @@ def parse_gtfs_file(raw_file_name, key_column, filter_set=None, filter_col=None)
     else:
         parse_info = {}
    
-    if not os.path.isfile(raw_file_name):
-        logging.error("Missing file %s", raw_file_name)
-        raise RuntimeError("Missing file %s"%(raw_file_name))
 
     with open(raw_file_name) as raw_file:
         reader = csv.DictReader(raw_file)
@@ -80,7 +99,7 @@ def filter_stops(stop_info):
 
     return new_stop_info
 
-def load_stop_times(stop_times_file, filter_set=None):
+def parse_stop_times_file(stop_times_file, filter_set=None):
     """Load the stop times into a big dict"""
     # NOTE: This is maybe possible with the above parsing function, but
     # would be a little complicated since there is no key in the same way, and
@@ -123,10 +142,12 @@ def load_stop_times(stop_times_file, filter_set=None):
 
     return stop_times
 
-def build_stop_adj_matrix(stop_times):
+def build_stop_adj_matrix(stop_times, stop_info):
     """Given a set of stop times, build an adjacencey matrix """
 
     stop_adj = {}
+
+    stop_set = set()
 
     for trip in stop_times:
         curr_trip = stop_times[trip]
@@ -136,13 +157,17 @@ def build_stop_adj_matrix(stop_times):
             if index == 0:
                 continue
 
+            # Get the parent station, unless there isnt one
+            stop_parent = map_to_parent(stop["stop_id"], stop_info)
+
             # Where did I come from?
             prev = curr_trip[index - 1]
             prev_id = prev["stop_id"]
+            prev_parent = map_to_parent(prev_id, stop_info)
 
             # Put it in adj matrix if needed
-            if prev_id not in stop_adj:
-                stop_adj[prev_id] = {}
+            if prev_parent not in stop_adj:
+                stop_adj[prev_parent] = {}
 
             # What's the time between the two?
             # TODO Getting hacky with time, assuming no DST silly
@@ -160,30 +185,50 @@ def build_stop_adj_matrix(stop_times):
             weight = (arrive_time - depart_time).total_seconds() % 86400
 
             # Save the minimum weight in the matrix, ie the min time between stations
-            if stop["stop_id"] in stop_adj[prev_id]:
-                curr = stop_adj[prev_id][stop["stop_id"]]
+            if stop_parent in stop_adj[prev_parent]:
+                curr = stop_adj[prev_parent][stop_parent]
                 weight = min(curr, weight)
 
             # Stick it in the matrix
-            stop_adj[prev_id][stop["stop_id"]] = weight
+            stop_adj[prev_parent][stop_parent] = weight
+
+    for stop_pair in stop_set:
+        print(stop_pair)
 
     return stop_adj
 
-def connect_transfers(stop_info):
+def connect_transfers(transfers, stop_info):
     """ Loop through all the stuff and match all the stations with transfers"""
     matches = {}
 
-    for stop in stop_info:
-        for inner_stop in stop_info:
-            # I think this might be a weird LA  metro thing? Or some software output?
-            if (stop_info[stop]["tpis_name"] == stop_info[inner_stop]["tpis_name"] and
-                    stop != inner_stop):
+    # Ok! If we got a transfers file, go ahead and use that to build match sets
+    if transfers is not None:
+        for transfer in transfers:
+            if transfer["from_stop_id"] in matches:
+                matches[transfer["from_stop_id"]].add(transfer["to_stop_id"])
+            else:
+                matches[transfer["from_stop_id"]] = set([transfer["to_stop_id"]])
+    else:
+        # So if there is no transfers file, we still might be able to do something.
+        # In the LA Metro Data (not seen it elsewhere) there is a field in the stops.txt
+        # called "tpis_name". I suspect this is some softward creating columns it shouldn't, 
+        # but it appears to indicate transfers...
 
-                # GO ahead and add it to the list
-                if stop in matches:
-                    matches[stop].add(inner_stop)
-                else:
-                    matches[stop] = set([inner_stop])
+
+        for stop in stop_info:
+            # First, let's check to see if we have it, if not bail
+            if "tpis_name" not in stop_info[stop]:
+                return {}
+
+            for inner_stop in stop_info:
+                if (stop_info[stop]["tpis_name"] == stop_info[inner_stop]["tpis_name"] and
+                        stop != inner_stop):
+
+                    # GO ahead and add it to the list
+                    if stop in matches:
+                        matches[stop].add(inner_stop)
+                    else:
+                        matches[stop] = set([inner_stop])
 
     return matches
 
@@ -214,7 +259,7 @@ def load_gtfs_data(data_dir, route_types):
     trip_ids = {trip_id for trip_id in trip_info}
 
     logging.info("Parsing Stop Times...")
-    stop_times = load_stop_times(raw_files["stop_times"],
+    stop_times = parse_stop_times_file(raw_files["stop_times"],
                                  filter_set=trip_ids)
 
     # Load the set of stops
@@ -224,16 +269,21 @@ def load_gtfs_data(data_dir, route_types):
     # NOTE: This may not be correct for all systems!
     stop_info = filter_stops(stop_info)
 
-
     logging.info("Parsing Calendar...")
     calendar = parse_gtfs_file(raw_files["calendar"], "service_id")
 
     logging.info("Parsing Calendar Dates...")
     calendar_dates = parse_gtfs_file(raw_files["calendar_dates"], None)
 
+    # Load the transfers file, if they gave us one
+    if "transfers" in raw_files:
+        transfers = parse_gtfs_file(raw_files["transfers"], None)
+    else:
+        transfers = None
+
+
     logging.info("Building minimum adjacencey matrix...")
-    adj_matrix = build_stop_adj_matrix(stop_times)
-    transfers = connect_transfers(stop_info)
+    adj_matrix = build_stop_adj_matrix(stop_times, stop_info)
 
     # Stick it all in a dict for now
     gtfs_data = {}
@@ -246,7 +296,7 @@ def load_gtfs_data(data_dir, route_types):
     gtfs_data["calendar"] = calendar
     gtfs_data["calendar_dates"] = calendar_dates
     gtfs_data["adj_matrix"] = adj_matrix
-    gtfs_data["transfers"] = transfers
+    gtfs_data["transfers"] = connect_transfers(transfers, stop_info)
 
     return gtfs_data
 
@@ -323,7 +373,7 @@ def generate_route(route_id, service_days, gtfs_data):
     # stop times (mapped to the corresponding day).
     route_list = []
     for day in service_days:
-        trip_id_list = []
+        trip_id_set = set()
 
         # Ok we have the service IDs, let's get the trips they contain
         # Loop through the trips and get all the trip IDs that match the route
@@ -338,17 +388,19 @@ def generate_route(route_id, service_days, gtfs_data):
                 continue
 
             # Ok so let's grab that
-            trip_id_list.append(trip_info[trip]["trip_id"])
+            trip_id_set.add(trip_info[trip]["trip_id"])
 
         # Ok, now figure out the routes for each one
         stop_times = gtfs_data["stop_times"]
+        stop_info = gtfs_data["stops"]
 
 
         for trip_id in stop_times:
-            if trip_id not in trip_id_list:
+            if trip_id not in trip_id_set:
                 continue
             # Ok this is a trip we want
-            new_route = [(stop["stop_id"], stop["arrival_time"]) for stop in stop_times[trip_id]]
+            # One last catch: we need to map each stop ID (which are the platforms) to its parent station
+            new_route = [(map_to_parent(stop["stop_id"], stop_info), stop["arrival_time"]) for stop in stop_times[trip_id]]
             # For kind of weird reasons related to midnight overlap you need to
             # tell it the date. Actually this works out well for doing multiple
             # dates at once
@@ -358,6 +410,17 @@ def generate_route(route_id, service_days, gtfs_data):
             route_list.append(new_route)
 
     return route_list
+
+def map_to_parent(stop_id, stop_info):
+    """ Given a stop ID and the stop Info dict, map to the parent station,
+    unless there isnt one."""
+
+    parent = stop_info[stop_id]["parent_station"]
+    # Some stations (and bus stops) don't have a parent, stay the same
+    if parent == "":
+        parent = stop_id
+
+    return parent
 
 def map_to_date(s_time, date):
     """Spit out a formated date-time using theset two"""
@@ -435,6 +498,12 @@ def gen_routes_out(data, outfile, max_time=0):
             # NOTE: Something can result in dupes, de dupe it!
             # Actually, this should really be a hard error I think...
             for route in full_route:
+                # Check the time, don't save it if over the time
+                start_time = compute_time(route[0][1])
+                if (max_time and (start_time - min_stamp > max_time)):
+                    continue
+
+                # Hash it and check for duplicates
                 hash_r = hash_route(route)
                 if hash_r in unique_set:
                     logging.warning("Skipping duplicate route: %s %s", route[0][0], route[0][1])
@@ -446,14 +515,6 @@ def gen_routes_out(data, outfile, max_time=0):
         out_f.write("%d\n"%(len(full_route_list)))
 
         for route in sorted(full_route_list, key=lambda x: compute_time(x[0][1])):
-            # Write the start time in epoch
-            start_time = compute_time(route[0][1])
-
-            if (max_time and (start_time - min_stamp > max_time)):
-                continue
-    
-            # Now that we write the time at each stop, we don't need stand along starts
-            #out_f.write("%d\n"%(start_time))
             for stop, s_time in route:
                 # Let's make a nice epoch version of the stop time
                 s_epoch = compute_time(s_time)

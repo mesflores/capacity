@@ -97,7 +97,7 @@ typedef struct {
     //station_sm curr_state; // What state is it in right now?
 
     // The left track is where the station ID of the adjacent station is less
-    // The righttrack is where the station ID of the adjacent station is less
+    // The righttrack is where the station ID of the adjacent station is more
     track_t left;
     track_t right;
 
