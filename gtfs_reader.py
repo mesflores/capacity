@@ -6,7 +6,166 @@ import csv
 import datetime
 import logging
 import os.path
-import sys
+
+############### Utility Functions #############
+
+def filter_stops(stop_info):
+    """ Filter for only type 0 stops, ie load/unload"""
+
+    new_stop_info = {}
+    for stop in stop_info:
+        if stop_info[stop]["location_type"] == "0":
+            new_stop_info[stop] = stop_info[stop]
+
+    return new_stop_info
+
+def map_to_parent(stop_id, stop_info):
+    """ Given a stop ID and the stop Info dict, map to the parent station,
+    unless there isnt one."""
+
+    parent = stop_info[stop_id]["parent_station"]
+    # Some stations (and bus stops) don't have a parent, stay the same
+    if parent == "":
+        parent = stop_id
+
+    return parent
+
+def map_to_date(s_time, date):
+    """Spit out a formated date-time using theset two"""
+    # This time format is bad and I feel bad
+
+    # In general this time hacking is nasty. Basically the issue is that the
+    # GTFS runs have a day, but the day might cary over past midnight. Python
+    # datetimes dont like that.
+    time_split = s_time.split(":")
+    # If its more than 24, add one to the date
+    old_date = datetime.datetime.strptime(date, "%Y%m%d")
+    if int(time_split[0]) == 24:
+        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+        s_time = "00:" + time_split[1] + ":" + time_split[2]
+    elif int(time_split[0]) == 25:
+        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+        s_time = "01:" + time_split[1] + ":" + time_split[2]
+    elif int(time_split[0]) == 26:
+        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+        s_time = "02:" + time_split[1] + ":" + time_split[2]
+    elif int(time_split[0]) == 27:
+        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+        s_time = "03:" + time_split[1] + ":" + time_split[2]
+    elif int(time_split[0]) == 28:
+        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
+        s_time = "04:" + time_split[1] + ":" + time_split[2]
+
+    return date + " " + s_time
+
+def gen_matrix_out(adj_matrix, outfile):
+    """ Generate a clean weighted adj-matrix output for capacity to consume """
+    with open(outfile, 'w') as out_f:
+        out_f.write("%d\n"%len(adj_matrix))
+        for src in adj_matrix:
+            for dst in adj_matrix[src]:
+                out_f.write("%s %s %d\n"%(src, dst, adj_matrix[src][dst]))
+
+def compute_time(format_time):
+    """ Given a formated time, compute epoch"""
+    return int(datetime.datetime.strptime(format_time, "%Y%m%d %H:%M:%S").timestamp())
+
+def hash_route(route):
+    """ Given a route as a list of stops and times, compute a silly hash for it"""
+    # Empirically, sometimes you can get the same route multiple times
+    # with slightly different times, for the hash, just check the start time
+    # along with the stops for the remainder
+    #
+    # Original full path, timing hashes
+    #str_list = [x[0]+x[1] for x in route]
+    # Less picky hash
+    str_list = [route[0][0] + route[0][1]]
+    str_list.extend([x[0] for x in route[1:]])
+
+    return "".join(str_list)
+
+
+################### Parsers ####################
+
+def parse_gtfs_file(raw_file_name, key_column, filter_set=None, filter_col=None):
+    """Parse a GTFS file, with key column being the unique key
+
+       If a filter set is given, only take rows where the filter col has a
+       value that lives in the filter set.
+    """
+
+    # If there is no unique key, return a list
+    if key_column is None:
+        parse_info = []
+    else:
+        parse_info = {}
+
+    with open(raw_file_name) as raw_file:
+        reader = csv.DictReader(raw_file)
+        for row in reader:
+            # If we need to filter
+            if filter_set is not None:
+                if row[filter_col] not in filter_set:
+                    continue
+
+            # Either take the whole row or grab the key
+            if key_column is None:
+                parse_info.append(row)
+            else:
+                # Get the key value
+                key_val = row[key_column]
+                parse_info[key_val] = {}
+
+                # Loop through the rest
+                for row_key in row:
+                    parse_info[key_val][row_key] = row[row_key]
+
+    return parse_info
+
+
+def parse_stop_times_file(stop_times_file, filter_set=None):
+    """Load the stop times into a big dict"""
+    # NOTE: This is maybe possible with the above parsing function, but
+    # would be a little complicated since there is no key in the same way, and
+    # I just want the sequences to go in a list
+    stop_times = {}
+    with open(stop_times_file) as stop_times_raw:
+        # Spin through the lines
+        for index, line in enumerate(stop_times_raw):
+            # If its the first one, learn the column positions
+            if index == 0:
+                columns = line.split(",")
+                key_index = columns.index("trip_id")
+                continue
+            # Get the trip_id
+            data_row = line.split(",")
+            trip_id = data_row[key_index]
+
+            # Check the filter set. Unilike the other files, this filter set
+            # can only work on the trip_ids
+            if filter_set is not None and trip_id not in filter_set:
+                continue
+
+            # did we have this?
+            if trip_id not in stop_times:
+                stop_times[trip_id] = []
+
+            # Make a dict for this one
+            trip_stop = {columns[x]: data for x, data in enumerate(data_row)}
+
+            # Type cleaning
+            trip_stop["stop_sequence"] = int(trip_stop["stop_sequence"])
+
+            # Add it to the list
+            stop_times[trip_id].append(trip_stop)
+
+    # Sort them all by sequence number. Probably we could do that at insert
+    for trip in stop_times:
+        stop_times[trip].sort(key=lambda x: x["stop_sequence"])
+
+    return stop_times
+
+################# Primary Flow #################
 
 def read_gtfs_files(data_dir):
     """ Read all the files and load them into python dict raw"""
@@ -53,101 +212,10 @@ def read_gtfs_files(data_dir):
 
     return gtfs_info
 
-def parse_gtfs_file(raw_file_name, key_column, filter_set=None, filter_col=None):
-    """Parse a GTFS file, with key column being the unique key
-
-       If a filter set is given, only take rows where the filter col has a
-       value that lives in the filter set.
-    """
-
-    # If there is no unique key, return a list
-    if key_column is None:
-        parse_info = []
-    else:
-        parse_info = {}
-   
-
-    with open(raw_file_name) as raw_file:
-        reader = csv.DictReader(raw_file)
-        for row in reader:
-            # If we need to filter 
-            if filter_set is not None:
-                if row[filter_col] not in filter_set:
-                    continue
-
-            # Either take the whole row or grab the key
-            if key_column is None:
-                parse_info.append(row)
-            else:
-                # Get the key value
-                key_val = row[key_column]
-                parse_info[key_val] = {}
-
-                # Loop through the rest
-                for row_key in row:
-                    parse_info[key_val][row_key] = row[row_key]
-
-    return parse_info
-
-def filter_stops(stop_info):
-    """ Filter for only type 0 stops, ie load/unload"""
-
-    new_stop_info = {}
-    for stop in stop_info:
-        if stop_info[stop]["location_type"] == "0":
-            new_stop_info[stop] = stop_info[stop]
-
-    return new_stop_info
-
-def parse_stop_times_file(stop_times_file, filter_set=None):
-    """Load the stop times into a big dict"""
-    # NOTE: This is maybe possible with the above parsing function, but
-    # would be a little complicated since there is no key in the same way, and
-    # I just want the sequences to go in a list
-    stop_times = {}
-    with open(stop_times_file) as stop_times_raw:
-        # Spin through the lines
-        for index, line in enumerate(stop_times_raw):
-            # If its the first one, learn the column positions
-            if index == 0:
-                columns = line.split(",")
-                key_index = columns.index("trip_id")
-                continue
-            # Get the trip_id
-            data_row = line.split(",")
-            trip_id = data_row[key_index]
-
-            # Check the filter set. Unilike the other files, this filter set
-            # can only work on the trip_ids
-            if filter_set is not None and trip_id not in filter_set:
-                continue
-
-            # did we have this?
-            if trip_id not in stop_times:
-                stop_times[trip_id] = []
-    
-            # Make a dict for this one
-            trip_stop = {columns[x]: data for x, data in enumerate(data_row)}
-    
-            # Type cleaning
-            trip_stop["stop_sequence"] = int(trip_stop["stop_sequence"])
-    
-            # Add it to the list
-            stop_times[trip_id].append(trip_stop)
-
-    # Sort them all by sequence number. Probably we could do that at insert,
-    # but fuck it
-    for trip in stop_times:
-        stop_times[trip].sort(key=lambda x: x["stop_sequence"])
-
-    return stop_times
-
 def build_stop_adj_matrix(stop_times, stop_info):
     """Given a set of stop times, build an adjacencey matrix """
 
     stop_adj = {}
-
-    stop_set = set()
 
     for trip in stop_times:
         curr_trip = stop_times[trip]
@@ -162,8 +230,7 @@ def build_stop_adj_matrix(stop_times, stop_info):
 
             # Where did I come from?
             prev = curr_trip[index - 1]
-            prev_id = prev["stop_id"]
-            prev_parent = map_to_parent(prev_id, stop_info)
+            prev_parent = map_to_parent(prev["stop_id"], stop_info)
 
             # Put it in adj matrix if needed
             if prev_parent not in stop_adj:
@@ -192,9 +259,6 @@ def build_stop_adj_matrix(stop_times, stop_info):
             # Stick it in the matrix
             stop_adj[prev_parent][stop_parent] = weight
 
-    for stop_pair in stop_set:
-        print(stop_pair)
-
     return stop_adj
 
 def connect_transfers(transfers, stop_info):
@@ -211,10 +275,8 @@ def connect_transfers(transfers, stop_info):
     else:
         # So if there is no transfers file, we still might be able to do something.
         # In the LA Metro Data (not seen it elsewhere) there is a field in the stops.txt
-        # called "tpis_name". I suspect this is some softward creating columns it shouldn't, 
+        # called "tpis_name". I suspect this is some softward creating columns it shouldn't,
         # but it appears to indicate transfers...
-
-
         for stop in stop_info:
             # First, let's check to see if we have it, if not bail
             if "tpis_name" not in stop_info[stop]:
@@ -248,19 +310,19 @@ def load_gtfs_data(data_dir, route_types):
                                  filter_col="route_type")
 
     # Build a filter set for trips
-    route_ids = {route_id for route_id in route_info}
+    route_ids = set(route_info.keys())
 
     logging.info("Parsing Trips...")
     trip_info = parse_gtfs_file(raw_files["trips"], "trip_id",
                                 filter_set=route_ids,
                                 filter_col="route_id")
-    
+
     # Build a filter set for the stop times
-    trip_ids = {trip_id for trip_id in trip_info}
+    trip_ids = set(trip_info.keys())
 
     logging.info("Parsing Stop Times...")
     stop_times = parse_stop_times_file(raw_files["stop_times"],
-                                 filter_set=trip_ids)
+                                       filter_set=trip_ids)
 
     # Load the set of stops
     logging.info("Parsing Stops...")
@@ -312,11 +374,7 @@ def extract_dates(cal_row):
     # Convert the days to just a list
     seq_list = [cal_row[x] for x in day_seq]
 
-    # Stat the index at the current day of the week, but set start to none so 
-    # we know when service kicks in
     index = curr_date.weekday()
-    start = False
-
     date_list = []
 
     # Until we get to the end
@@ -333,6 +391,8 @@ def extract_dates(cal_row):
     return date_list
 
 def build_service_set(gtfs_data):
+    """Based on the calendar, figure out which service IDs should run for
+    each date"""
     # The master dict of days
     service_days = {}
 
@@ -399,8 +459,10 @@ def generate_route(route_id, service_days, gtfs_data):
             if trip_id not in trip_id_set:
                 continue
             # Ok this is a trip we want
-            # One last catch: we need to map each stop ID (which are the platforms) to its parent station
-            new_route = [(map_to_parent(stop["stop_id"], stop_info), stop["arrival_time"]) for stop in stop_times[trip_id]]
+            # One last catch: we need to map each stop ID (which are the
+            # platforms) to its parent station
+            new_route = [(map_to_parent(stop["stop_id"], stop_info),
+                          stop["arrival_time"]) for stop in stop_times[trip_id]]
             # For kind of weird reasons related to midnight overlap you need to
             # tell it the date. Actually this works out well for doing multiple
             # dates at once
@@ -411,71 +473,6 @@ def generate_route(route_id, service_days, gtfs_data):
 
     return route_list
 
-def map_to_parent(stop_id, stop_info):
-    """ Given a stop ID and the stop Info dict, map to the parent station,
-    unless there isnt one."""
-
-    parent = stop_info[stop_id]["parent_station"]
-    # Some stations (and bus stops) don't have a parent, stay the same
-    if parent == "":
-        parent = stop_id
-
-    return parent
-
-def map_to_date(s_time, date):
-    """Spit out a formated date-time using theset two"""
-    # This time format is bad and I feel bad
-
-    # In general this time hacking is nasty. Basically the issue is that the
-    # GTFS runs have a day, but the day might cary over past midnight. Python
-    # datetimes dont like that.
-    time_split = s_time.split(":")
-    # If its more than 24, add one to the date
-    old_date = datetime.datetime.strptime(date, "%Y%m%d")
-    if int(time_split[0]) == 24:
-        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
-        s_time = "00:" + time_split[1] + ":" + time_split[2]
-    elif int(time_split[0]) == 25:
-        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
-        s_time = "01:" + time_split[1] + ":" + time_split[2]
-    elif int(time_split[0]) == 26:
-        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
-        s_time = "02:" + time_split[1] + ":" + time_split[2]
-    elif int(time_split[0]) == 27:
-        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
-        s_time = "03:" + time_split[1] + ":" + time_split[2]
-    elif int(time_split[0]) == 28:
-        date = (old_date + datetime.timedelta(days=1)).strftime("%Y%m%d")
-        s_time = "04:" + time_split[1] + ":" + time_split[2]
-
-    return date + " " + s_time
-
-def gen_matrix_out(adj_matrix, outfile):
-    """ Generate a clean weighted adj-matrix output for capacity to consume """
-    with open(outfile, 'w') as out_f:
-        out_f.write("%d\n"%len(adj_matrix))
-        for src in adj_matrix:
-            for dst in adj_matrix[src]:
-                out_f.write("%s %s %d\n"%(src, dst, adj_matrix[src][dst]))
-
-def compute_time(x):
-    """ Given a formated time, compute epoch"""
-    return int(datetime.datetime.strptime(x, "%Y%m%d %H:%M:%S").timestamp())
-
-def hash_route(route):
-    """ Given a route as a list of stops and times, compute a silly hash for it"""
-    # Empirically, sometimes you can get the same route multiple times
-    # with slightly different times, for the hash, just check the start time
-    # along with the stops for the remainder
-    #
-    # Original full path, timing hashes
-    #str_list = [x[0]+x[1] for x in route]
-    # Less picky hash
-    str_list = [route[0][0] + route[0][1]]
-    str_list.extend([x[0] for x in route[1:]])
-
-    return "".join(str_list)
- 
 def gen_routes_out(data, outfile, max_time=0):
     """ Generate route info for runs described in GTFS"""
     with open(outfile, 'w') as out_f:
@@ -490,10 +487,10 @@ def gen_routes_out(data, outfile, max_time=0):
         # Now the specific routes
         unique_set = set()
 
-        service_days = build_service_set(data)
-
         for route_set in data["routes"]:
-            full_route = generate_route(route_set, service_days, data)
+            full_route = generate_route(route_set,
+                                        build_service_set(data),
+                                        data)
             new_routes = []
             # NOTE: Something can result in dupes, de dupe it!
             # Actually, this should really be a hard error I think...
@@ -533,7 +530,7 @@ if __name__ == "__main__":
     parser.add_argument("-m", "--max_time", type=int, help="Only generate"
                         " routes that occur in the first max_time seconds", default=0)
     parser.add_argument("--route_types", nargs="+", help="Route types to load.",
-                        default=['0','1'])
+                        default=['0', '1'])
     args = parser.parse_args()
 
     # Take the directory with the GTFS files
