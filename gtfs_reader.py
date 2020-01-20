@@ -31,7 +31,7 @@ def map_to_parent(stop_id, stop_info):
     return parent
 
 def map_to_date(s_time, date):
-    """Spit out a formated date-time using theset two"""
+    """Spit out a formated date-time using the set two"""
     # This time format is bad and I feel bad
 
     # In general this time hacking is nasty. Basically the issue is that the
@@ -58,13 +58,6 @@ def map_to_date(s_time, date):
 
     return date + " " + s_time
 
-def gen_matrix_out(adj_matrix, outfile):
-    """ Generate a clean weighted adj-matrix output for capacity to consume """
-    with open(outfile, 'w') as out_f:
-        out_f.write("%d\n"%len(adj_matrix))
-        for src in adj_matrix:
-            for dst in adj_matrix[src]:
-                out_f.write("%s %s %d\n"%(src, dst, adj_matrix[src][dst]))
 
 def compute_time(format_time):
     """ Given a formated time, compute epoch"""
@@ -86,6 +79,51 @@ def hash_route(route):
 
 
 ################### Parsers ####################
+
+def read_gtfs_files(data_dir):
+    """ Read all the files and load them into python dict raw"""
+    gtfs_info = {}
+
+    # GTFS sfiles standards
+    gtfs_req_files = [
+        "agency",
+        "stops",
+        "routes",
+        "trips",
+        "stop_times",
+        "calendar",
+        "calendar_dates",
+    ]
+
+    gtfs_optional_files = [
+        "transfers",
+    ]
+
+    # Build a dict of all the required file names
+    for gtfs_file in gtfs_req_files:
+        # build the actual file name
+        file_name = gtfs_file + ".txt"
+        file_name = os.path.join(data_dir, file_name)
+        gtfs_info[gtfs_file] = file_name
+
+        if not os.path.isfile(file_name):
+            logging.error("Missing file %s", file_name)
+            raise RuntimeError("Missing file %s"%(file_name))
+
+    # Now do the optional
+    for gtfs_file in gtfs_optional_files:
+        # build the actual file name
+        file_name = gtfs_file + ".txt"
+        file_name = os.path.join(data_dir, file_name)
+
+        # Here, not existing isnt an error and it doesnt add the path
+        # (Since it doesnt exist)
+        if not os.path.isfile(file_name):
+            logging.info("Optional file %s not found, skipping", file_name)
+        else:
+            gtfs_info[gtfs_file] = file_name
+
+    return gtfs_info
 
 def parse_gtfs_file(raw_file_name, key_column, filter_set=None, filter_col=None):
     """Parse a GTFS file, with key column being the unique key
@@ -165,52 +203,7 @@ def parse_stop_times_file(stop_times_file, filter_set=None):
 
     return stop_times
 
-################# Primary Flow #################
-
-def read_gtfs_files(data_dir):
-    """ Read all the files and load them into python dict raw"""
-    gtfs_info = {}
-
-    # GTFS sfiles standards
-    gtfs_req_files = [
-        "agency",
-        "stops",
-        "routes",
-        "trips",
-        "stop_times",
-        "calendar",
-        "calendar_dates",
-    ]
-
-    gtfs_optional_files = [
-        "transfers",
-    ]
-
-    # Build a dict of all the required file names
-    for gtfs_file in gtfs_req_files:
-        # build the actual file name
-        file_name = gtfs_file + ".txt"
-        file_name = os.path.join(data_dir, file_name)
-        gtfs_info[gtfs_file] = file_name
-
-        if not os.path.isfile(file_name):
-            logging.error("Missing file %s", file_name)
-            raise RuntimeError("Missing file %s"%(file_name))
-
-    # Now do the optional
-    for gtfs_file in gtfs_optional_files:
-        # build the actual file name
-        file_name = gtfs_file + ".txt"
-        file_name = os.path.join(data_dir, file_name)
-
-        # Here, not existing isnt an error and it doesnt add the path
-        # (Since it doesnt exist)
-        if not os.path.isfile(file_name):
-            logging.info("Optional file %s not found, skipping", file_name)
-        else:
-            gtfs_info[gtfs_file] = file_name
-
-    return gtfs_info
+################ GTFS Processors ##############
 
 def build_stop_adj_matrix(stop_times, stop_info):
     """Given a set of stop times, build an adjacencey matrix """
@@ -218,9 +211,8 @@ def build_stop_adj_matrix(stop_times, stop_info):
     stop_adj = {}
 
     for trip in stop_times:
-        curr_trip = stop_times[trip]
         # Loop through the seq of stops
-        for index, stop in enumerate(curr_trip):
+        for index, stop in enumerate(stop_times[trip]):
             # If its the first one, just move on
             if index == 0:
                 continue
@@ -229,7 +221,7 @@ def build_stop_adj_matrix(stop_times, stop_info):
             stop_parent = map_to_parent(stop["stop_id"], stop_info)
 
             # Where did I come from?
-            prev = curr_trip[index - 1]
+            prev = stop_times[trip][index - 1]
             prev_parent = map_to_parent(prev["stop_id"], stop_info)
 
             # Put it in adj matrix if needed
@@ -244,8 +236,7 @@ def build_stop_adj_matrix(stop_times, stop_info):
                                                      "%H:%M:%S")
             arrive_components = stop["arrival_time"].split(":")
             arrive_components[0] = str(int(arrive_components[0]) % 24)
-            arrive_string = ":".join(arrive_components)
-            arrive_time = datetime.datetime.strptime(arrive_string,
+            arrive_time = datetime.datetime.strptime(":".join(arrive_components),
                                                      "%H:%M:%S")
 
             # TODO: That mod to deal with day wrap around is real sketchy
@@ -294,74 +285,6 @@ def connect_transfers(transfers, stop_info):
 
     return matches
 
-def load_gtfs_data(data_dir, route_types):
-    """Does all the heavy lifting returns everything in a nice dict"""
-    logging.info("Loading GTFS files...")
-    raw_files = read_gtfs_files(data_dir)
-
-    logging.info("Parsing Agency...")
-    agency_info = parse_gtfs_file(raw_files["agency"], "agency_name")
-
-    # First, we'll have to get the full set of routes
-    # Here, we only want route ids that had our matching route type
-    logging.info("Parsing Routes...")
-    route_info = parse_gtfs_file(raw_files["routes"], "route_id",
-                                 filter_set=route_types,
-                                 filter_col="route_type")
-
-    # Build a filter set for trips
-    route_ids = set(route_info.keys())
-
-    logging.info("Parsing Trips...")
-    trip_info = parse_gtfs_file(raw_files["trips"], "trip_id",
-                                filter_set=route_ids,
-                                filter_col="route_id")
-
-    # Build a filter set for the stop times
-    trip_ids = set(trip_info.keys())
-
-    logging.info("Parsing Stop Times...")
-    stop_times = parse_stop_times_file(raw_files["stop_times"],
-                                       filter_set=trip_ids)
-
-    # Load the set of stops
-    logging.info("Parsing Stops...")
-    stop_info = parse_gtfs_file(raw_files["stops"], "stop_id")
-    # Filter for actual load/unload, remove entrances
-    # NOTE: This may not be correct for all systems!
-    stop_info = filter_stops(stop_info)
-
-    logging.info("Parsing Calendar...")
-    calendar = parse_gtfs_file(raw_files["calendar"], "service_id")
-
-    logging.info("Parsing Calendar Dates...")
-    calendar_dates = parse_gtfs_file(raw_files["calendar_dates"], None)
-
-    # Load the transfers file, if they gave us one
-    if "transfers" in raw_files:
-        transfers = parse_gtfs_file(raw_files["transfers"], None)
-    else:
-        transfers = None
-
-
-    logging.info("Building minimum adjacencey matrix...")
-    adj_matrix = build_stop_adj_matrix(stop_times, stop_info)
-
-    # Stick it all in a dict for now
-    gtfs_data = {}
-
-    gtfs_data["agency"] = agency_info
-    gtfs_data["routes"] = route_info
-    gtfs_data["stops"] = stop_info
-    gtfs_data["trip_info"] = trip_info
-    gtfs_data["stop_times"] = stop_times
-    gtfs_data["calendar"] = calendar
-    gtfs_data["calendar_dates"] = calendar_dates
-    gtfs_data["adj_matrix"] = adj_matrix
-    gtfs_data["transfers"] = connect_transfers(transfers, stop_info)
-
-    return gtfs_data
-
 def extract_dates(cal_row):
     """ Given a row from calendar.txt, figure out the corresponding dates """
 
@@ -394,6 +317,8 @@ def build_service_set(gtfs_data):
     """Based on the calendar, figure out which service IDs should run for
     each date"""
     # The master dict of days
+    # Keys are the dates, the values are a list of service IDs that run for
+    # that day
     service_days = {}
 
     # Loop through each service ID
@@ -425,7 +350,7 @@ def build_service_set(gtfs_data):
                                 service_id, date)
     return service_days
 
-def generate_route(route_id, service_days, gtfs_data):
+def generate_route(route_id, service_days, gtfs_data, min_stamp, max_time):
     """For a given route, spin through stop times and build longest version """
     # Ok so now we know for each day what service IDs are in effect. So now,
     # we'll spin over the days. For each day, we'll figure out which trips
@@ -439,11 +364,11 @@ def generate_route(route_id, service_days, gtfs_data):
         # Loop through the trips and get all the trip IDs that match the route
         trip_info = gtfs_data["trip_info"]
         for trip in trip_info:
-            # Is it our route
+            # Is it our route?
             if trip_info[trip]["route_id"] != route_id:
                 continue
 
-            # Is it one of our service IDs?
+            # Is the service ID active for this day?
             if trip_info[trip]["service_id"] not in service_days[day]:
                 continue
 
@@ -454,12 +379,11 @@ def generate_route(route_id, service_days, gtfs_data):
         stop_times = gtfs_data["stop_times"]
         stop_info = gtfs_data["stops"]
 
-
         for trip_id in stop_times:
             if trip_id not in trip_id_set:
                 continue
             # Ok this is a trip we want
-            # One last catch: we need to map each stop ID (which are the
+            # We need to map each stop ID (which are the
             # platforms) to its parent station
             new_route = [(map_to_parent(stop["stop_id"], stop_info),
                           stop["arrival_time"]) for stop in stop_times[trip_id]]
@@ -468,55 +392,184 @@ def generate_route(route_id, service_days, gtfs_data):
             # dates at once
             new_route = [(x[0], map_to_date(x[1], day)) for x in new_route]
 
-            # Add it to the big master list
-            route_list.append(new_route)
+            # Actually, if this route is over the limit, don't save it
+            if max_time and (compute_time(new_route[0][1]) > (max_time + min_stamp)):
+                continue
 
+            # Finally, we need to check if the route has a double stop in it
+            # Ie if the route contains an out-and-back trip, if so, split it up
+            # This returns a list of routes
+            new_route_set = split_route(new_route)
+
+            # Add our list (possibly of length 1!) to the big master list
+            route_list.extend(new_route_set)
+
+    # At the end of the outer loop, we have a list that has all the routes for
+    # all the days that match our particular route_id for a described set of
+    # service days
     return route_list
 
-def gen_routes_out(data, outfile, max_time=0):
-    """ Generate route info for runs described in GTFS"""
-    with open(outfile, 'w') as out_f:
-        # First, let's get the start date
-        min_date = min([y["start_date"] for (x, y) in data["calendar"].items()])
-        min_stamp = int(datetime.datetime.strptime(min_date, "%Y%m%d").timestamp())
+def split_route(route):
+    """ Checks to see if a route contains an out and back.
+        If so, split it into 2 separate routes
+    """
+    split_index = None
+    # Loop over each step
+    for index, hop in enumerate(route):
+        if index == 0:
+            continue
+        curr_stop = hop[0]
+        prev_stop = route[index - 1][0]
 
-        out_f.write("%d\n"%(min_stamp))
+        if prev_stop == curr_stop:
+            split_index = index
 
-        full_route_list = []
+    # If we never found a double just return the original route in a list
+    if split_index is None:
+        return [route,]
 
-        # Now the specific routes
-        unique_set = set()
+    # Split it on the double, return the halves
+    return [route[:split_index], route[split_index:]]
 
-        for route_set in data["routes"]:
-            full_route = generate_route(route_set,
-                                        build_service_set(data),
-                                        data)
-            new_routes = []
-            # NOTE: Something can result in dupes, de dupe it!
-            # Actually, this should really be a hard error I think...
-            for route in full_route:
-                # Check the time, don't save it if over the time
-                start_time = compute_time(route[0][1])
-                if (max_time and (start_time - min_stamp > max_time)):
-                    continue
 
-                # Hash it and check for duplicates
-                hash_r = hash_route(route)
-                if hash_r in unique_set:
-                    logging.warning("Skipping duplicate route: %s %s", route[0][0], route[0][1])
-                    continue
-                unique_set.add(hash_r)
-                new_routes.append(route)
-            full_route_list.extend(new_routes)
 
-        out_f.write("%d\n"%(len(full_route_list)))
+################# Primary Flow #################
 
-        for route in sorted(full_route_list, key=lambda x: compute_time(x[0][1])):
-            for stop, s_time in route:
-                # Let's make a nice epoch version of the stop time
-                s_epoch = compute_time(s_time)
-                out_f.write("%s,%s "%(stop, s_epoch))
-            out_f.write("\n")
+class GTFSReader():
+    """ Reader to load, validate, and manage GTFS files """
+    def __init__(self, data_dir, route_types):
+        self.data_dir = data_dir
+
+        # Make sure that data dir is valid
+        if not os.path.isdir(data_dir):
+            raise RuntimeError("Not a directory path!")
+
+        # Load up the file paths, make sure everything exists
+        logging.info("Loading GTFS files...")
+        self.raw_files = read_gtfs_files(self.data_dir)
+
+        # Actually load and parse all the data
+        self._load_gtfs_data(route_types)
+
+    def _load_gtfs_data(self, route_types):
+        """Does all the heavy lifting returns everything in a nice dict"""
+
+        logging.info("Parsing Agency...")
+        agency_info = parse_gtfs_file(self.raw_files["agency"], "agency_name")
+
+        # First, we'll have to get the full set of routes
+        # Here, we only want route ids that had our matching route type
+        logging.info("Parsing Routes...")
+        route_info = parse_gtfs_file(self.raw_files["routes"], "route_id",
+                                     filter_set=route_types,
+                                     filter_col="route_type")
+
+        # Build a filter set for trips
+        route_ids = set(route_info.keys())
+
+        logging.info("Parsing Trips...")
+        trip_info = parse_gtfs_file(self.raw_files["trips"], "trip_id",
+                                    filter_set=route_ids,
+                                    filter_col="route_id")
+
+        # Build a filter set for the stop times
+        trip_ids = set(trip_info.keys())
+
+        logging.info("Parsing Stop Times...")
+        stop_times = parse_stop_times_file(self.raw_files["stop_times"],
+                                           filter_set=trip_ids)
+
+        # Load the set of stops
+        logging.info("Parsing Stops...")
+        stop_info = parse_gtfs_file(self.raw_files["stops"], "stop_id")
+        # Filter for actual load/unload, remove entrances
+        # NOTE: This may not be correct for all systems!
+        stop_info = filter_stops(stop_info)
+
+        logging.info("Parsing Calendar...")
+        calendar = parse_gtfs_file(self.raw_files["calendar"], "service_id")
+
+        logging.info("Parsing Calendar Dates...")
+        calendar_dates = parse_gtfs_file(self.raw_files["calendar_dates"], None)
+
+        # Load the transfers file, if they gave us one
+        if "transfers" in self.raw_files:
+            transfers = parse_gtfs_file(self.raw_files["transfers"], None)
+        else:
+            transfers = None
+
+
+        # Stick it all in a dict for now
+        self.gtfs_data = {}
+
+        self.gtfs_data["agency"] = agency_info
+        self.gtfs_data["routes"] = route_info
+        self.gtfs_data["stops"] = stop_info
+        self.gtfs_data["trip_info"] = trip_info
+        self.gtfs_data["stop_times"] = stop_times
+        self.gtfs_data["calendar"] = calendar
+        self.gtfs_data["calendar_dates"] = calendar_dates
+        self.gtfs_data["transfers"] = connect_transfers(transfers, stop_info)
+
+    def gen_matrix_out(self, outfile):
+        """ Generate a clean weighted adj-matrix output for capacity to consume """
+
+        logging.info("Building minimum adjacencey matrix...")
+        # Generate the matrix
+        adj_matrix = build_stop_adj_matrix(self.gtfs_data["stop_times"],
+                                           self.gtfs_data["stops"])
+        # Dump it to a file
+        with open(outfile, 'w') as out_f:
+            out_f.write("%d\n"%len(adj_matrix))
+            for src in adj_matrix:
+                for dst in adj_matrix[src]:
+                    out_f.write("%s %s %d\n"%(src, dst, adj_matrix[src][dst]))
+
+    def gen_routes_out(self, outfile, max_time=None):
+        """ Generate route info for runs described in GTFS"""
+        with open(outfile, 'w') as out_f:
+            # First, let's get the start date, write it in the file
+            min_date = min([y["start_date"] for (x, y) in self.gtfs_data["calendar"].items()])
+            min_stamp = int(datetime.datetime.strptime(min_date, "%Y%m%d").timestamp())
+            out_f.write("%d\n"%(min_stamp))
+
+            # Now the specific routes
+            full_route_list = [] # Masater list
+            unique_set = set() # For keeping track of unique routes
+
+            for route_set in self.gtfs_data["routes"]:
+                full_route = generate_route(route_set,
+                                            build_service_set(self.gtfs_data),
+                                            self.gtfs_data,
+                                            min_stamp,
+                                            max_time)
+                new_routes = []
+                # NOTE: Something can result in dupes, de dupe it!
+                # Actually, this should really be a hard error I think...
+                for route in full_route:
+                    # Check the time, don't save it if over the time
+                    start_time = compute_time(route[0][1])
+                    if (max_time and (start_time - min_stamp > max_time)):
+                        continue
+
+                    # Hash it and check for duplicates
+                    hash_r = hash_route(route)
+                    if hash_r in unique_set:
+                        logging.warning("Skipping duplicate route: %s %s", route[0][0], route[0][1])
+                        continue
+                    unique_set.add(hash_r)
+                    new_routes.append(route)
+
+                full_route_list.extend(new_routes)
+
+            out_f.write("%d\n"%(len(full_route_list)))
+
+            for route in sorted(full_route_list, key=lambda x: compute_time(x[0][1])):
+                for stop, s_time in route:
+                    # Let's make a nice epoch version of the stop time
+                    s_epoch = compute_time(s_time)
+                    out_f.write("%s,%s "%(stop, s_epoch))
+                out_f.write("\n")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Read GTFS files and generate"
@@ -533,23 +586,17 @@ if __name__ == "__main__":
                         default=['0', '1'])
     args = parser.parse_args()
 
-    # Take the directory with the GTFS files
-    data_dir_arg = args.gtfs_dir
-
-    if not os.path.isdir(data_dir_arg):
-        raise RuntimeError("Not a directory path!")
-
     # Configure the log formatter
     logging.basicConfig(format="%(asctime)s %(levelname)s: %(message)s")
 
     # Load everything
     print("Loading GTFS data...")
-    full_data = load_gtfs_data(data_dir_arg, args.route_types)
+    g_reader = GTFSReader(args.gtfs_dir, args.route_types)
 
     # Dump the adj matrix
     print("Generating adjacency matrix...")
-    gen_matrix_out(full_data["adj_matrix"], args.adjacency)
+    g_reader.gen_matrix_out(args.adjacency)
 
     print("Generating routes file...")
     # Dump the routes themselves
-    gen_routes_out(full_data, args.routes, args.max_time)
+    g_reader.gen_routes_out(args.routes, args.max_time)
