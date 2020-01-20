@@ -6,6 +6,7 @@ import csv
 import datetime
 import logging
 import os.path
+import sys
 
 def read_gtfs_files(data_dir):
     """ Read all the files and load them into python dict raw"""
@@ -20,41 +21,52 @@ def read_gtfs_files(data_dir):
         "stop_times",
         "calendar",
         "calendar_dates",
-        # There are others but not required. Someday.
     ]
 
     for gtfs_file in gtfs_req_files:
         # build the actual file name
         file_name = gtfs_file + ".txt"
         file_name = os.path.join(data_dir, file_name)
-        with open(file_name) as gtfs_file_obj:
-            # Just dump the whole thing into mem.
-            # these might be kind of big in some cases...
-            gtfs_info[gtfs_file] = gtfs_file_obj.read().strip()
+        gtfs_info[gtfs_file] = file_name
 
     return gtfs_info
 
-def parse_gtfs_file(raw_file, key_column):
-    """Parse a GTFS file, with key column being the unique key"""
+def parse_gtfs_file(raw_file_name, key_column, filter_set=None, filter_col=None):
+    """Parse a GTFS file, with key column being the unique key
+
+       If a filter set is given, only take rows where the filter col has a
+       value that lives in the filter set.
+    """
+
     # If there is no unique key, return a list
     if key_column is None:
         parse_info = []
     else:
         parse_info = {}
+   
+    if not os.path.isfile(raw_file_name):
+        logging.error("Missing file %s", raw_file_name)
+        raise RuntimeError("Missing file %s"%(raw_file_name))
 
-    reader = csv.DictReader(raw_file.splitlines())
-    for row in reader:
+    with open(raw_file_name) as raw_file:
+        reader = csv.DictReader(raw_file)
+        for row in reader:
+            # If we need to filter 
+            if filter_set is not None:
+                if row[filter_col] not in filter_set:
+                    continue
 
-        if key_column is None:
-            parse_info.append(row)
-        else:
-            # Get the key value
-            key_val = row[key_column]
-            parse_info[key_val] = {}
+            # Either take the whole row or grab the key
+            if key_column is None:
+                parse_info.append(row)
+            else:
+                # Get the key value
+                key_val = row[key_column]
+                parse_info[key_val] = {}
 
-            # Loop through the rest
-            for row_key in row:
-                parse_info[key_val][row_key] = row[row_key]
+                # Loop through the rest
+                for row_key in row:
+                    parse_info[key_val][row_key] = row[row_key]
 
     return parse_info
 
@@ -68,35 +80,36 @@ def filter_stops(stop_info):
 
     return new_stop_info
 
-def load_stop_times(stop_times_raw):
+def load_stop_times(stop_times_file):
     """Load the stop times into a big dict"""
     # NOTE: This is maybe possible with the above parsing function, but
     # would be a little complicated since there is no key in the same way, and
     # I just want the sequences to go in a list
     stop_times = {}
-    # Spin through the lines
-    for index, line in enumerate(stop_times_raw.split("\n")):
-        # If its the first one, learn the column positions
-        if index == 0:
-            columns = line.split(",")
-            key_index = columns.index("trip_id")
-            continue
-        # Get the trip_id
-        data_row = line.split(",")
-        trip_id = data_row[key_index]
-
-        # did we have this?
-        if trip_id not in stop_times:
-            stop_times[trip_id] = []
-
-        # Make a dict for this one
-        trip_stop = {columns[x]: data for x, data in enumerate(data_row)}
-
-        # Type cleaning
-        trip_stop["stop_sequence"] = int(trip_stop["stop_sequence"])
-
-        # Add it to the list
-        stop_times[trip_id].append(trip_stop)
+    with open(stop_times_file) as stop_times_raw:
+        # Spin through the lines
+        for index, line in enumerate(stop_times_raw):
+            # If its the first one, learn the column positions
+            if index == 0:
+                columns = line.split(",")
+                key_index = columns.index("trip_id")
+                continue
+            # Get the trip_id
+            data_row = line.split(",")
+            trip_id = data_row[key_index]
+    
+            # did we have this?
+            if trip_id not in stop_times:
+                stop_times[trip_id] = []
+    
+            # Make a dict for this one
+            trip_stop = {columns[x]: data for x, data in enumerate(data_row)}
+    
+            # Type cleaning
+            trip_stop["stop_sequence"] = int(trip_stop["stop_sequence"])
+    
+            # Add it to the list
+            stop_times[trip_id].append(trip_stop)
 
     # Sort them all by sequence number. Probably we could do that at insert,
     # but fuck it
@@ -141,7 +154,7 @@ def build_stop_adj_matrix(stop_times):
             # TODO: That mod to deal with day wrap around is real sketchy
             weight = (arrive_time - depart_time).total_seconds() % 86400
 
-            # Save the minimum wieght in the matrix, ie the min time between stations
+            # Save the minimum weight in the matrix, ie the min time between stations
             if stop["stop_id"] in stop_adj[prev_id]:
                 curr = stop_adj[prev_id][stop["stop_id"]]
                 weight = min(curr, weight)
@@ -157,6 +170,7 @@ def connect_transfers(stop_info):
 
     for stop in stop_info:
         for inner_stop in stop_info:
+            # I think this might be a weird LA  metro thing? Or some software output?
             if (stop_info[stop]["tpis_name"] == stop_info[inner_stop]["tpis_name"] and
                     stop != inner_stop):
 
@@ -168,38 +182,39 @@ def connect_transfers(stop_info):
 
     return matches
 
-def load_gtfs_data(data_dir):
+def load_gtfs_data(data_dir, route_types):
     """Does all the heavy lifting returns everything in a nice dict"""
     logging.info("Loading GTFS files...")
-    raw_data = read_gtfs_files(data_dir)
+    raw_files = read_gtfs_files(data_dir)
 
     logging.info("Parsing Agency...")
-    #agency_info = parse_gtfs_file(raw_data["agency"], "agency_id")
-    agency_info = parse_gtfs_file(raw_data["agency"], "agency_name")
+    agency_info = parse_gtfs_file(raw_files["agency"], "agency_name")
 
-    # More or less, it will look something like this:
-    # Trips-> turn into trains + routes
-
+    # First, we'll have to get the full set of routes
+    # Here, we only want route ids that had our matching route type
     logging.info("Parsing Routes...")
-    route_info = parse_gtfs_file(raw_data["routes"], "route_id")
+    route_info = parse_gtfs_file(raw_files["routes"], "route_id",
+                                 filter_set=route_types,
+                                 filter_col="route_type")
 
     # Load the set of stops
     logging.info("Parsing Stops...")
-    stop_info = parse_gtfs_file(raw_data["stops"], "stop_id")
+    stop_info = parse_gtfs_file(raw_files["stops"], "stop_id")
     # Filter for actual load/unload, remove entrances
+    # NOTE: This may not be correct for all systems!
     stop_info = filter_stops(stop_info)
 
     logging.info("Parsing Trips...")
-    trip_info = parse_gtfs_file(raw_data["trips"], "trip_id")
+    trip_info = parse_gtfs_file(raw_files["trips"], "trip_id")
 
     logging.info("Parsing Stop Times...")
-    stop_times = load_stop_times(raw_data["stop_times"])
+    stop_times = load_stop_times(raw_files["stop_times"])
 
     logging.info("Parsing Calendar...")
-    calendar = parse_gtfs_file(raw_data["calendar"], "service_id")
+    calendar = parse_gtfs_file(raw_files["calendar"], "service_id")
 
     logging.info("Parsing Calendar Dates...")
-    calendar_dates = parse_gtfs_file(raw_data["calendar_dates"], None)
+    calendar_dates = parse_gtfs_file(raw_files["calendar_dates"], None)
 
     logging.info("Building minimum adjacencey matrix...")
     adj_matrix = build_stop_adj_matrix(stop_times)
@@ -403,6 +418,7 @@ def gen_routes_out(data, outfile, max_time=0):
             full_route = generate_route(route_set, service_days, data)
             new_routes = []
             # NOTE: Something can result in dupes, de dupe it!
+            # Actually, this should really be a hard error I think...
             for route in full_route:
                 hash_r = hash_route(route)
                 if hash_r in unique_set:
@@ -440,6 +456,8 @@ if __name__ == "__main__":
                         default="routes.dat")
     parser.add_argument("-m", "--max_time", type=int, help="Only generate"
                         " routes that occur in the first max_time seconds", default=0)
+    parser.add_argument("--route_types", nargs="+", help="Route types to load.",
+                        default=['0','1'])
     args = parser.parse_args()
 
     # Take the directory with the GTFS files
@@ -453,7 +471,7 @@ if __name__ == "__main__":
 
     # Load everything
     print("Loading GTFS data...")
-    full_data = load_gtfs_data(data_dir_arg)
+    full_data = load_gtfs_data(data_dir_arg, args.route_types)
 
     # Dump the adj matrix
     print("Generating adjacency matrix...")
