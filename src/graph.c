@@ -50,7 +50,7 @@ void graph_init(const char* matrix_fn) {
     memset(name_lookup_ar, 0, sizeof(name_lookup_ar[0][0]) * STA_MAX * MAX_NAME_LEN);
 
     // Crack open te intermediate file
-    FILE* dat_file = fopen(matrix_fn, "r"); 
+    FILE* dat_file = fopen(matrix_fn, "r");
     if (dat_file == NULL) {
         perror("Failed to open matrix file!");
         exit(-1);
@@ -71,7 +71,7 @@ void graph_init(const char* matrix_fn) {
             igraph_matrix_init(&mat, dimension, dimension);
             igraph_matrix_null(&mat);
             continue;
-        } 
+        }
         // For each line, get the values
         parse_dat_line(src_name, dst_name, &delay, line);
 
@@ -90,7 +90,7 @@ void graph_init(const char* matrix_fn) {
             // Save it
             install(id_lookup, src_name, src_id);
         } else {
-            // We have one, just use it 
+            // We have one, just use it
             src_id = current->defn;
         }
         // Repeat for the dst
@@ -114,26 +114,26 @@ void graph_init(const char* matrix_fn) {
         strcpy(name_lookup_ar[src_id], src_name);
         strcpy(name_lookup_ar[dst_id], dst_name);
         name_lookup_ar_len = max_id;
-        
+
         // Ok let's populate the matrix
         MATRIX(mat, src_id, dst_id) = delay;
-          
+
     }
-    fclose(dat_file);  
+    fclose(dat_file);
 
     // Now, lets create the graph
     igraph_i_set_attribute_table(&igraph_cattribute_table);
- 
+
     // Go ahead and generate the graph
     igraph_weighted_adjacency(g_graph, &mat, IGRAPH_ADJ_DIRECTED, 0, /*loops=*/ 1);
     // Print it so we can make sure it did what we thought
-    //print(g_graph); 
+    //print(g_graph);
 
     g_station_count = dimension;
 
     // Dump the graph
-    //FILE* o_file = fopen("dot_file", "w");
-    //igraph_write_graph_dot(g_graph, o_file);
+    FILE* o_file = fopen("graph_dot_file", "w");
+    igraph_write_graph_dot(g_graph, o_file);
 
 }
 

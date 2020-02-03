@@ -531,7 +531,7 @@ class GTFSReader():
             # First, let's get the start date, write it in the file
             min_date = min([y["start_date"] for (x, y) in self.gtfs_data["calendar"].items()])
             min_stamp = int(datetime.datetime.strptime(min_date, "%Y%m%d").timestamp())
-            out_f.write("%d\n"%(min_stamp))
+            out_f.write("%d\n"%(min_stamp - 1))
 
             # Now the specific routes
             full_route_list = [] # Masater list
