@@ -17,8 +17,8 @@
 
 // Read the config and init the global routes, return the number of runs
 void init_global_routes(const char* routes_fn) {
-    char line[1024]; //XXX DANGEROUS, assumes shortish lines
-    char stops[256][128]; // XXX less but STILL DANGEROUS
+    char line[MAX_ROUTE_CHARS]; //XXX DANGEROUS, assumes shortish lines
+    char stops[MAX_NUM_STOPS][MAX_NUM_STOP_CHARS]; // XXX less but STILL DANGEROUS
 
     int start_time = 0;
     int end_time = 0;
