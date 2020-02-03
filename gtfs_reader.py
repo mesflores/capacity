@@ -23,12 +23,17 @@ def map_to_parent(stop_id, stop_info):
     """ Given a stop ID and the stop Info dict, map to the parent station,
     unless there isnt one."""
 
-    parent = stop_info[stop_id]["parent_station"]
-    # Some stations (and bus stops) don't have a parent, stay the same
-    if parent == "":
-        parent = stop_id
+    # NOTE: Currently this is disabled to keep LA Metro working until 
+    # I figure something else out.
+    return stop_id
 
-    return parent
+#
+#    parent = stop_info[stop_id]["parent_station"]
+#    # Some stations (and bus stops) don't have a parent, stay the same
+#    if parent == "":
+#        parent = stop_id
+#
+#    return parent
 
 def map_to_date(s_time, date):
     """Spit out a formated date-time using the set two"""
