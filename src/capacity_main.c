@@ -38,6 +38,28 @@ tw_lptype model_lps[] = {
   { 0 },
 };
 
+// Define the tracing functions
+st_model_types model_types[] = {
+  {
+    (ev_trace_f) station_ev_trace,
+    0, // Size
+    (model_stat_f) station_stat_collect,
+    0, // size
+    NULL, //(sample_event_f)
+    NULL, //(sample_revent_f)
+    0
+  },
+  {
+    (ev_trace_f) transit_unit_ev_trace,
+    0, // Size
+    (model_stat_f) transit_unit_stat_collect,
+    0, // size
+    NULL, //(sample_event_f)
+    NULL, //(sample_revent_f)
+    0
+  },
+  { 0 },
+};
 
 // Global stuff
 int g_num_stations = 10;
@@ -102,7 +124,6 @@ int capacity_main (int argc, char* argv[]) {
     g_num_stations = get_station_count();
     // TODO: These should not map 1 to 1, but for now they do for simplicity
     g_num_transit_units = get_transit_unit_count();
-    printf("Global transit units: %d\n", g_num_transit_units);
     set_route_offset(g_num_stations);
 
     // Set the global time offset

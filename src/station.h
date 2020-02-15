@@ -44,4 +44,9 @@ extern void station_init(state *s, tw_lp *lp, satation_state *s);
 extern void station_event(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void station_event_reverse(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
 extern void station_final(state *s, tw_lp *lp);
+
+// Tracing
+extern void station_ev_trace(void *msg, tw_lp *lp, char *buffer, int *collect_flag);
+extern void station_stat_collect(state *s, tw_lp *lp, char *buffer);
+
 #endif

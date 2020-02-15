@@ -158,5 +158,12 @@ extern void transit_unit_final(tu_state *s, tw_lp *lp);
 
 extern tw_peid transit_unit_map(tw_lpid gid);
 
+// Stats
+extern void station_ev_trace(void *msg, tw_lp *lp, char *buffer, int *collect_flag);
+extern void station_stat_collect(void *s, tw_lp *lp, char *buffer);
+extern void transit_unit_ev_trace(void *msg, tw_lp *lp, char *buffer, int *collect_flag);
+extern void transit_unit_stat_collect(void *s, tw_lp *lp, char *buffer);
+
+
 /*******************************************/
 #endif

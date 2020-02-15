@@ -456,3 +456,20 @@ void station_final (station_state *s, tw_lp *lp){
     int self = lp->gid;
 }
 
+// Tracing
+void station_ev_trace(void *msg, tw_lp *lp, char *buffer, int *collect_flag) {
+    (void) msg;
+    (void) lp;
+    (void) buffer;
+    (void) collect_flag;
+    return;
+}
+
+void station_stat_collect(void *s, tw_lp *lp, char *buffer) {
+    (void) s;
+    (void) lp;
+    (void) buffer;
+    return;
+}
+
+
