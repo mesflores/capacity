@@ -5,10 +5,10 @@ usage() {
     exit 1
 }
 
-if [  $# -le 1 ] 
-then 
+if [  $# -le 1 ]
+then
 	usage
-fi 
+fi
 
 # Make a dir for nodes to dump data to
 mkdir -p out_dat
@@ -51,7 +51,7 @@ rm -f base.out seq.raw seq.out con.raw con.out opt.raw opt.out
 #models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$ROUTES --end=1382400> base.raw
 #cat base.raw | grep \\\[ | sort > base.out
 
-## Run it sequential 
+## Run it sequential
 echo "Running Sequential.."
 mpirun -np 1 models/capacity/src/capacity --synch=1 --mat=$MAT --routes=$ROUTES --end=$MAXTS > seq.raw
 # Filter for messages that start with the bracket
@@ -95,3 +95,7 @@ for i in $(seq $REPS)
             exit 1
         fi
     done
+
+
+# Clean up leftovers
+rm -f base.out seq.raw seq.out con.raw con.out opt.raw opt.out

@@ -40,8 +40,8 @@ void station_init (station_state *s, tw_lp *lp) {
 #endif
     // init state data
     s->left.track_id = 0;
-    s->left.inbound = ST_EMPTY; 
-    s->left.outbound = ST_EMPTY; 
+    s->left.inbound = ST_EMPTY;
+    s->left.outbound = ST_EMPTY;
     s->left.curr_tu = 0;
     s->left.queued_tu_present = 0;
     memset(s->left.queued_tu, 0, sizeof(s->left.queued_tu));
@@ -49,8 +49,8 @@ void station_init (station_state *s, tw_lp *lp) {
     s->left.from_queue = 0;
 
     s->right.track_id = 1;
-    s->right.inbound = ST_EMPTY; 
-    s->right.outbound = ST_EMPTY; 
+    s->right.inbound = ST_EMPTY;
+    s->right.outbound = ST_EMPTY;
     s->right.curr_tu = 0;
     s->right.queued_tu_present = 0;
     memset(s->right.queued_tu, 0, sizeof(s->right.queued_tu));
@@ -102,13 +102,13 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     // handle the message
     switch (in_msg->type) {
         case TRAIN_ARRIVE : {
-            tw_output(lp, "\n[%.3f] ST %d: Train %d arriving at %s on track %d!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
-            
+            //tw_output(lp, "\n[%.3f] ST %d: Train %d arriving at %s on track %d!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
+
 #if DEBUG_FILE_OUTPUT
             fprintf(node_out_file, "[ST %d]: Train %lu arriving at %s on track %d!\n", self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
             fflush(node_out_file);
 #endif
-            
+
             // First, check to see what our state is
             if ((curr_track->inbound == ST_OCCUPIED) || (curr_track->inbound == ST_BOARDING)) {
                 // If the current track is occupied by us, well that's 
@@ -126,7 +126,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // notification when the state transitions to empty
                 add_train(in_msg->source, curr_track); 
 
-                tw_output(lp, "\n[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source); 
+                //tw_output(lp, "\n[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source); 
 #if DEBUG_FILE_OUTPUT
                 fprintf(node_out_file, "[ST %d]: Queueing up %lu\n", self, in_msg->source);
                 fprintf(node_out_file, "[ST %d]: Already here: %lu\n", self, curr_track->queued_tu[0]);
@@ -142,7 +142,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // All these passengers got on here I guess
                 msg->source = self;
                 msg->next_arrival = curr_track->next_arrival;
-                tw_output(lp, "[%.3f] ST %d: Sending ack message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
+                //tw_output(lp, "[%.3f] ST %d: Sending ack message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
 #if DEBUG_FILE_OUTPUT
                 fprintf(node_out_file, "[ST %d]: Sending ack message to %lu on track %d!\n", self, in_msg->source, curr_track->track_id);
                 fflush(node_out_file);
