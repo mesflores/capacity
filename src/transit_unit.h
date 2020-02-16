@@ -43,6 +43,7 @@ void transit_unit_final(tu_state *s, tw_lp *lp);
 
 extern int* route_init(); // Init the route
 
+// Helper Functions
 int initial_approach(tu_state* s,  tw_lp *lp, int init);
 int advance_route(tu_state *s, tw_lp *lp);
 

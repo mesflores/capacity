@@ -99,6 +99,8 @@ int advance_route(tu_state *s, tw_lp *lp) {
     return 0;
 }
 
+
+
 //Init function
 // - called once for each LP
 // ! LP can only send messages to itself during init !
@@ -350,10 +352,13 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 
                 // We do need to tell the last station that we left
                 tw_output(lp,
-                          "\n[%.3f] TU %d:Route ending at STA %s!\n",
+                          //"\n[%.3f] TU %d:Route ending at STA %s!\n",
+                          "\n[%.3f] %d %s FINISH %.3f\n", // <TU>, <Station>, FINISH, <schedule_error>
                           tw_now(lp),
                           self,
-                          sta_name_lookup(in_msg->source));
+                          sta_name_lookup(in_msg->source),
+                          tw_now(lp) - (s->route->end_time - g_time_offset)
+                          );
 #if DEBUG_FILE_OUTPUT
                 fprintf(node_out_file,
                         "[TU %d] route index %d\n", self, s->route_index);
