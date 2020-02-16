@@ -10,6 +10,7 @@
 #include "passenger.h"
 #include "model.h"
 #include "graph.h"
+#include "transit_unit.h"
 #include "route.h"
 
 //Helper Functions

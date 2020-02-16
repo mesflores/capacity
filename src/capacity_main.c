@@ -10,6 +10,8 @@
 #include "route.h"
 #include "passenger.h"
 #include "model.h"
+#include "station.h"
+#include "transit_unit.h"
 
 // Define LP types
 //   these are the functions called by ROSS for each LP

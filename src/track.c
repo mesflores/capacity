@@ -5,6 +5,7 @@
 #include "ross.h"
 #include "passenger.h"
 #include "model.h"
+#include "station.h"
 #include "track.h"
 
 
