@@ -120,6 +120,8 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
     // Go ahead and init the route
     s->route = NULL;
 
+    s->delayed = 0;
+
     advance_route(s, lp);
 
     return;
@@ -151,6 +153,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     int delay;
     int current_index;
     long int next_station;
+    int next_time;
     char curr_station;
 
 
@@ -284,6 +287,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 return;
             }
 
+
 #if DEBUG_FILE_OUTPUT
             fprintf(node_out_file,
                     "[TU %d] Current route index: %d(/%d)\n",
@@ -293,8 +297,49 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             fflush(node_out_file);
 #endif
 
-            // Ok tell the next station that we are on our way
+
+            // Next, check to see if we are supposed to dwell at this station
             next_station = get_next(s->route, &(s->route_index));
+            next_time = get_next_time(s->route, &(s->route_index));
+
+            if (next_station != -1) {
+                // How far away is the next station actually
+                delay = get_delay_id(in_msg->source, next_station);
+                // Do we need to leave now to get there, given the current
+                // time and our scheduled arrival?
+                if ((next_time - g_time_offset) > tw_now(lp) + delay) {
+#if DEBUG_FILE_OUTPUT
+                    fprintf(node_out_file,
+                        "[TU %d] Pausing for delay (%2.2f seconds)!\n",
+                        self,
+                        ((next_time - g_time_offset) - tw_now(lp) - delay));
+                    fflush(node_out_file);
+#endif
+
+                    // In this case we need to wait here for the difference
+                    s->delayed = 1;
+                    tw_event *e = tw_event_new(s->station,
+                                               (next_time - g_time_offset) - tw_now(lp) - delay,
+                                               lp);
+                    message *msg = tw_event_data(e);
+                    msg->type = TRAIN_BOARD;
+                    msg->prev_station = s->prev_station;
+                    msg->source = self;
+                    tw_event_send(e);
+
+                    break;
+                }
+                // Else, just proceed as normal, we need to leave now
+                if (s->delayed == 1) {
+                    fprintf(node_out_file,
+                            "[TU %d] Clobbering an old delayed flag\n",
+                            self);
+                    fflush(node_out_file);
+                }
+                s->delayed = 0;
+            }
+
+            // Ok tell the next station that we are on our way
             s->curr_state = TU_APPROACH;
 
             // Bump the routeindex
@@ -359,6 +404,9 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                           sta_name_lookup(in_msg->source),
                           tw_now(lp) - (s->route->end_time - g_time_offset)
                           );
+                if ((tw_now(lp) - (s->route->end_time - g_time_offset)) < 0.0) {
+                    tw_output(lp, "FINISH UNDERRUN: %d\n", s->route->end_time);
+                }
 #if DEBUG_FILE_OUTPUT
                 fprintf(node_out_file,
                         "[TU %d] route index %d\n", self, s->route_index);
@@ -504,6 +552,20 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
                     in_msg->source);
             fflush(node_out_file);
 #endif
+
+            // Did we delay here?
+            if (s->delayed == 1) {
+#if DEBUG_FILE_OUTPUT
+                fprintf(node_out_file,
+                        "[TU %d] Nothing to do here, just unset the delay flag!\n",
+                        self);
+                fflush(node_out_file);
+#endif
+                // In this case, nothing to do but to unset the delay flag
+                s->delayed = 0;
+                break;
+            }
+
             // First, we need to check if our route index is 0, if so, we
             // must roll back to the previous
             if (s->route_index == 0) {

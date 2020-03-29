@@ -27,6 +27,8 @@ typedef struct {
     passenger_t* pass_list; //Passenger linked list
     int pass_count;
 
+    short delayed;
+
     int min_time; // the minimum arrival time at next station
 
 } tu_state;

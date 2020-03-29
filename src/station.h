@@ -22,6 +22,8 @@ typedef struct {
 
     tw_lpid curr_tu; // who is on the track now
 
+    short add_board; // there was additional boarding
+
     // Inbound queue
     unsigned short queued_tu_present;
     tw_lpid queued_tu[QUEUE_LEN];

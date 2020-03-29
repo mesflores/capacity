@@ -55,7 +55,8 @@ typedef struct {
     short more; //For P_ messages, are there more coming?
     int next_arrival; // ST_ACK - the time the previous departing train will reach the next station
                       // TRAIN_DEPART - the time the train will reach the next station
-    short from_queue; 
+    short from_queue;
+    short delayed;
     passenger_t curr_pass;
 } message;
 
