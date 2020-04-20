@@ -28,6 +28,8 @@ SET(capacity_srcs
     station.c
     track.c
     track.h
+    utils.h
+    utils.c
     model.h
     model_mapping.c
 	model_config.h

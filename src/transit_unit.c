@@ -12,13 +12,8 @@
 #include "graph.h"
 #include "transit_unit.h"
 #include "route.h"
+#include "utils.h"
 
-//Helper Functions
-void SWAP_UL (unsigned long *a, unsigned long *b) {
-    unsigned long tmp = *a;
-    *a = *b;
-    *b = tmp;
-}
 
 /*
  * initial_approach - Send a message to the first station in the route
@@ -216,9 +211,16 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             //s->station = in_msg->source;
             SWAP_UL(&(s->station), &(in_msg->source));
 
-
             //s->min_time = in_msg->next_arrival;
             SWAP(&(s->min_time), &(in_msg->next_arrival));
+
+            // Remember the delay
+            fprintf(node_out_file,
+                    "[TU %d] before the swap delayed: %d\n",
+                    self,
+                    s->delayed);
+            fflush(node_out_file);
+            SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
 
             // TODO: Send messages to station to empty passengers
 
@@ -336,6 +338,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                             self);
                     fflush(node_out_file);
                 }
+                SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
                 s->delayed = 0;
             }
 
@@ -542,6 +545,9 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
             //Reset the min time
             SWAP(&(s->min_time), &(in_msg->next_arrival));
 
+            //Reset the delay
+            SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
+
             break;
         }
         case P_COMPLETE : {
@@ -565,6 +571,8 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
                 s->delayed = 0;
                 break;
             }
+            //Reset the delay
+            SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
 
             // First, we need to check if our route index is 0, if so, we
             // must roll back to the previous
@@ -579,7 +587,13 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
                 //s->curr_state = TU_BOARD;
                 s->route = s->route->prev_route;
                 s->route_index = s->route->length;
+                fprintf(node_out_file,
+                        "[TU %d] resetting station %d\n", self, s->route->length - 1);
+                fflush(node_out_file);
                 s->station = s->route->route[s->route->length - 1];
+                fprintf(node_out_file,
+                        "[TU %d] resetting prev station %d\n", self, s->route->length - 2);
+                fflush(node_out_file);
                 s->prev_station = s->route->route[s->route->length - 2];
                 // Passenger features stay blank since the train empties at last stop
                 s->start = s->route->start_time - g_time_offset;
