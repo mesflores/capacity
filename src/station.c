@@ -10,21 +10,9 @@
 #include "passenger.h"
 #include "model.h"
 #include "graph.h"
+#include "station.h"
 #include "track.h"
-
-//Helper Functions
-void SWAP (int *a, int *b) {
-    int tmp = *a;
-    *a = *b;
-    *b = tmp;
-}
-void SWAP_SHORT (short *a, short *b) {
-    short tmp = *a;
-    *a = *b;
-    *b = tmp;
-}
-
-
+#include "utils.h"
 
 
 //Init function
@@ -39,18 +27,20 @@ void station_init (station_state *s, tw_lp *lp) {
 #endif
     // init state data
     s->left.track_id = 0;
-    s->left.inbound = ST_EMPTY; 
-    s->left.outbound = ST_EMPTY; 
+    s->left.inbound = ST_EMPTY;
+    s->left.outbound = ST_EMPTY;
     s->left.curr_tu = 0;
+    s->left.add_board = 0;
     s->left.queued_tu_present = 0;
     memset(s->left.queued_tu, 0, sizeof(s->left.queued_tu));
     s->left.next_arrival = 0;
     s->left.from_queue = 0;
 
     s->right.track_id = 1;
-    s->right.inbound = ST_EMPTY; 
-    s->right.outbound = ST_EMPTY; 
+    s->right.inbound = ST_EMPTY;
+    s->right.outbound = ST_EMPTY;
     s->right.curr_tu = 0;
+    s->right.add_board = 0;
     s->right.queued_tu_present = 0;
     memset(s->right.queued_tu, 0, sizeof(s->right.queued_tu));
     s->right.next_arrival = 0;
@@ -101,16 +91,16 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
     // handle the message
     switch (in_msg->type) {
         case TRAIN_ARRIVE : {
-            tw_output(lp, "\n[%.3f] ST %d: Train %d arriving at %s on track %d!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
-            
+            //tw_output(lp, "\n[%.3f] ST %d: Train %d arriving at %s on track %d!\n", tw_now(lp), self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
+
 #if DEBUG_FILE_OUTPUT
             fprintf(node_out_file, "[ST %d]: Train %lu arriving at %s on track %d!\n", self, in_msg->source, sta_name_lookup(self), curr_track->track_id);
             fflush(node_out_file);
 #endif
-            
+
             // First, check to see what our state is
             if ((curr_track->inbound == ST_OCCUPIED) || (curr_track->inbound == ST_BOARDING)) {
-                // If the current track is occupied by us, well that's 
+                // If the current track is occupied by us, well that's
                 // bad, go ahead and suspend
                 if (curr_track->queued_tu[0] == in_msg->source){
 #if DEBUG_FILE_OUTPUT
@@ -121,11 +111,11 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                     return;
                 }
 
-                // If we are currently occupied, put the TU in the queue for 
+                // If we are currently occupied, put the TU in the queue for
                 // notification when the state transitions to empty
-                add_train(in_msg->source, curr_track); 
+                add_train(in_msg->source, curr_track);
 
-                tw_output(lp, "\n[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source); 
+                //tw_output(lp, "\n[%.3f] ST: %d: Queuening up train %d\n", tw_now(lp), self, in_msg->source);
 #if DEBUG_FILE_OUTPUT
                 fprintf(node_out_file, "[ST %d]: Queueing up %lu\n", self, in_msg->source);
                 fprintf(node_out_file, "[ST %d]: Already here: %lu\n", self, curr_track->queued_tu[0]);
@@ -141,13 +131,13 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // All these passengers got on here I guess
                 msg->source = self;
                 msg->next_arrival = curr_track->next_arrival;
-                tw_output(lp, "[%.3f] ST %d: Sending ack message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
+                //tw_output(lp, "[%.3f] ST %d: Sending ack message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
 #if DEBUG_FILE_OUTPUT
                 fprintf(node_out_file, "[ST %d]: Sending ack message to %lu on track %d!\n", self, in_msg->source, curr_track->track_id);
                 fflush(node_out_file);
 #endif
                 tw_event_send(e);
-               
+
                 curr_track->inbound = ST_OCCUPIED;
                 curr_track->curr_tu = in_msg->source;
             }
@@ -194,7 +184,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 #endif
 
             // First check that we are in the right state
-            if (curr_track->inbound != ST_OCCUPIED) {
+            if ((curr_track->inbound != ST_OCCUPIED) && (curr_track->inbound != ST_BOARDING)) {
                 // It was in a weird state, suspend
 #if DEBUG_FILE_OUTPUT
                 fprintf(node_out_file, "[ST %d]: TRAIN_BOARD but I wasnt in occuppied from %ld - suspend\n", self, in_msg->source);
@@ -202,6 +192,18 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 #endif
                 tw_lp_suspend(lp, 0, 0);
                 return;
+            }
+
+            // If we were already in boarding when we got this, go ahead
+            // and note that, ie we waited a gap.
+            if (curr_track->inbound == ST_BOARDING) {
+#if DEBUG_FILE_OUTPUT
+                fprintf(node_out_file, "[ST %d]: I got a Final boarding call from %ld\n", self, in_msg->source);
+                fflush(node_out_file);
+#endif
+                curr_track->add_board = 1;
+            } else {
+                curr_track->add_board = 0;
             }
 
             // Was this train actualy in the station?
@@ -249,7 +251,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                         // Hard break out
                         return;
                     }
-                    // Advance the loop 
+                    // Advance the loop
                     prev_pass = curr_pass;
                     curr_pass = curr_pass->next;
                 }
@@ -266,9 +268,9 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             //fprintf(node_out_file, "[ST %d]: Sending P_COMPLETE to %ld\n", self, in_msg->source);
             //tw_output(lp, "[%.3f] ST %d: Sending boarding complete message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
             tw_event_send(e);
-        
+
             break;
-        } 
+        }
         case TRAIN_DEPART : {
             // Are we in the right state for this?
             if (curr_track->inbound != ST_BOARDING) {
@@ -340,7 +342,7 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 //tw_output(lp, "[%.3f] ST %d: Sending ack message to queued TU %d!\n", tw_now(lp), self, curr_tu);
                 //tw_output(lp, "[%.3f] ST %d: Sending ack message to queued TU %d!\n", tw_now(lp), self, curr_track->queued_tu);
                 tw_event_send(e);
-              
+
                 // Bump to occupied, continue
                 curr_track->inbound = ST_OCCUPIED;
                 curr_track->curr_tu = curr_tu;
@@ -386,13 +388,13 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
             fprintf(node_out_file, "[ST %d]: STA reverse TRAIN_ARRIVE call from %lu at track %d!\n", self, in_msg->source, curr_track->track_id);
             fflush(node_out_file);
 #endif
-            // If we had something queued, that means this arrival queued, clear it 
+            // If we had something queued, that means this arrival queued, clear it
             if (curr_track->queued_tu_present > 0) {
 #if DEBUG_FILE_OUTPUT
                 fprintf(node_out_file, "[ST %d]: other trains in the station!\n", self);
                 fprintf(node_out_file, "[ST %d]: In my seat: %lu !\n", self, curr_track->queued_tu[0]);
 #endif
-                pop_tail(curr_track);   
+                pop_tail(curr_track);
                 //curr_track->queued_tu_present = 0; // In a better world this would decrement
                 //(curr_track->queued_tu)[0] = 0;
             } else {
@@ -415,7 +417,12 @@ void station_event_reverse (station_state *s, tw_bf *bf, message *in_msg, tw_lp 
 #endif
             // TODO: Actually this is incomplete for now, since receiving
             // a train_board does nothing but generate a P_COMPLETE
-            curr_track->inbound = ST_OCCUPIED;
+            // Double actually, dont roll it back if we were in add board
+            if (curr_track->add_board == 1) {
+                curr_track->add_board = 0;
+            } else {
+                curr_track->inbound = ST_OCCUPIED;
+            }
             break;
         }
         case TRAIN_DEPART : {

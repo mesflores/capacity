@@ -4,24 +4,53 @@
 #ifndef _station_h
 #define _station_h
 
-typedef enum {
-    TRAIN_ARRIVE,
-    TRAIN_DEPART
-} message_type;
-
-// Message 
-typedef struct {
-    message_type type;
-    tw_lpid origin;
-    passenger curr_pass;
-} message;
+/**************** Station LP ***************/
 
 // Station state
+typedef enum {
+    ST_EMPTY, // Station is empty, let trains in
+    ST_OCCUPIED, // There is a train here, alighting passengers
+    ST_BOARDING, // Loading passengers onto the TU
+} station_sm; //SM - state machine, not full state
+
+// Wraps up the track state
 typedef struct {
-    int p_arrive; // Passangers that arrived here
-    int p_depart; // Passangers that left
-    passenger curr_pass; //TODO Currently allows one passanger per station
-} state;
+    station_sm inbound;
+    station_sm outbound;
+
+    int track_id; // Just an identifier so we can tell them apart
+
+    tw_lpid curr_tu; // who is on the track now
+
+    short add_board; // there was additional boarding
+
+    // Inbound queue
+    unsigned short queued_tu_present;
+    tw_lpid queued_tu[QUEUE_LEN];
+
+    // Outbound queue
+    // This really represents the space between the stations`
+    int next_arrival;
+
+    short from_queue;
+
+} track_t;
+
+typedef struct {
+    char station_name[25]; // Identifier name for station TODO FIX SIZE
+
+    //station_sm curr_state; // What state is it in right now?
+
+    // The left track is where the station ID of the adjacent station is less
+    // The righttrack is where the station ID of the adjacent station is more
+    track_t left;
+    track_t right;
+
+    //unsigned short queued_tu_present; // Anything in the queue?
+    //tw_lpid queued_tu; // The TU queued up. TODO: For now a single int, should get expanded
+
+    passenger_t* pass_list; //Passenger linked list
+} station_state;
 
 //Global variables used by both main and driver
 // - this defines the LP types
@@ -29,19 +58,10 @@ extern tw_lptype station_lps[];
 
 //Function Declarations
 // defined in station.c:
-track_t track_map(int curr_station, int prev_station, message *in_msg);
-track_t track_map_rev(int curr_station, int prev_station, message *in_msg);
-
-// Track queue management
-int add_train(tw_lpid new_train, track_t* track); // Add somebody new
-int pop_head(track_t* track); // Take the train off the front
-int add_train_head(tw_lpid new_train, track_t* track); //Add train to head, for reverse
-int pop_tail(track_t* track); // Take train off the back, for reverse
+void station_init(station_state *s, tw_lp *lp);
+void station_event(station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
+void station_event_reverse(station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
+void station_final(station_state *s, tw_lp *lp);
 
 
-
-extern void station_init(state *s, tw_lp *lp, satation_state *s);
-extern void station_event(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
-extern void station_event_reverse(state *s, tw_bf *bf, message *in_msg, tw_lp *lp);
-extern void station_final(state *s, tw_lp *lp);
 #endif

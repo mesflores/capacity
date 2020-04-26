@@ -136,11 +136,11 @@ void model_custom_mapping_rr(void){
     // Loop over every ID and look it up forward and reverse
     //for(i = 0; i < ng_tw_nlp * tw_nnodes(); i++) {
     for (j = g_tw_mynode; j <  g_tw_nlp * tw_nnodes(); j+=lp_stride) {
-        local_id = j / tw_nnodes();  
+        local_id = j / tw_nnodes();
         fprintf(node_out_file, "Map %d to %d\n", j, local_id);
         if (j != g_tw_lp[local_id]->gid) {
             tw_error(TW_LOC, "Mapping Inconsistency at %d", j);
-        } 
+        }
     }
 #endif
 
