@@ -3,6 +3,13 @@
 #ifndef _route_int_h
 #define _route_int_h
 
+// Maximum number of characters in route description
+#define MAX_ROUTE_CHARS 1024
+// Maxiumum number of stops per route
+#define MAX_NUM_STOPS 256
+// Maximim number of characters for each stop
+#define MAX_NUM_STOP_CHARS 128
+
 #define MIN_ROUTE_GAP 7200
 
 route_t* route_list;
