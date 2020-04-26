@@ -6,7 +6,7 @@
 
 #define CONTROL_EPOCH .006
 
-#define QUEUE_LEN 100
+#define QUEUE_LEN 255
 
 extern void SWAP (int *a, int *b);
 
