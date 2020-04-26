@@ -68,6 +68,8 @@ int advance_route(tu_state *s, tw_lp *lp) {
     } else {
         // If the next one is null, dont change it
         if (s->route->next_route == NULL) {
+            // Still set the route index to 0, we can undo it if we need
+            s->route_index = 0;
             return 1;
         }
         // Bump the route to the next one in the list
@@ -116,6 +118,7 @@ void transit_unit_init (tu_state *s, tw_lp *lp) {
     s->route = NULL;
 
     s->delayed = 0;
+    s->completed = 0;
 
     advance_route(s, lp);
 
@@ -214,13 +217,6 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             //s->min_time = in_msg->next_arrival;
             SWAP(&(s->min_time), &(in_msg->next_arrival));
 
-            // Remember the delay
-            fprintf(node_out_file,
-                    "[TU %d] before the swap delayed: %d\n",
-                    self,
-                    s->delayed);
-            fflush(node_out_file);
-            SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
 
             // TODO: Send messages to station to empty passengers
 
@@ -237,7 +233,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             //          sta_name_lookup(s->station));
 #if DEBUG_FILE_OUTPUT
             fprintf(node_out_file,
-                    "[TU %d] Sending TRAIN_BOARD to %ld \n",
+                    "[TU %d] Sending TRAIN_BOARD to %ld\n",
                     self,
                     s->station);
             fflush(node_out_file);
@@ -260,6 +256,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             fflush(node_out_file);
 #endif
 
+            /***** State Machine Sanity Checks *****/
             // Was this TU in the right state?
             if (s->curr_state != TU_BOARD) {
 #if DEBUG_FILE_OUTPUT
@@ -288,6 +285,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 tw_lp_suspend(lp, 0, 1);
                 return;
             }
+            /***************************************/
 
 
 #if DEBUG_FILE_OUTPUT
@@ -299,11 +297,11 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
             fflush(node_out_file);
 #endif
 
-
-            // Next, check to see if we are supposed to dwell at this station
+            // Ask what the next station is, and when we are expected to get there
             next_station = get_next(s->route, &(s->route_index));
             next_time = get_next_time(s->route, &(s->route_index));
 
+            // Did we have a next station?
             if (next_station != -1) {
                 // How far away is the next station actually
                 delay = get_delay_id(in_msg->source, next_station);
@@ -319,6 +317,7 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
 #endif
 
                     // In this case we need to wait here for the difference
+                    SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
                     s->delayed = 1;
                     tw_event *e = tw_event_new(s->station,
                                                (next_time - g_time_offset) - tw_now(lp) - delay,
@@ -329,18 +328,16 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                     msg->source = self;
                     tw_event_send(e);
 
+                    // That's it, bail out of everything
                     break;
                 }
                 // Else, just proceed as normal, we need to leave now
-                if (s->delayed == 1) {
-                    fprintf(node_out_file,
-                            "[TU %d] Clobbering an old delayed flag\n",
-                            self);
-                    fflush(node_out_file);
-                }
+
+                //  Stash whatever our status was before in the incoming message and reset
+                // the delayed flag to 0, since at this point, we decided to leave
                 SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
                 s->delayed = 0;
-            }
+            } // Else, we are actually at the last stop, so nothing special to do for delay
 
             // Ok tell the next station that we are on our way
             s->curr_state = TU_APPROACH;
@@ -417,17 +414,24 @@ void transit_unit_event (tu_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                         "[TU %d] station %lu\n", self, s->station);
                 fprintf(node_out_file,
                         "[TU %d] prev_station %lu\n", self, s->prev_station);
+                fprintf(node_out_file,
+                        "[TU %d] delay status %d\n", self, s->delayed);
+                fflush(node_out_file);
 #endif
 
                 if (advance_route(s, lp) == 0) {
-                    //tw_output(lp,
-                    //          "\n[%.3f] TU %d: Starting fresh route!\n",
-                    //          tw_now(lp),
-                    //          self);
+                    tw_output(lp,
+                              "\n[%.3f] TU %d: Starting fresh route!\n",
+                              tw_now(lp),
+                              self);
                     initial_approach(s, lp, 1);
-                    fflush(node_out_file);
                 } else {
                     // End of the run for this LP, let us know
+                    s->completed = 1; // Mark it as done
+#if DEBUG_FILE_OUTPUT
+                    fprintf(node_out_file, "[TU %d] Completed final run!\n", self);
+                    fflush(node_out_file);
+#endif
                     tw_output(lp,
                               "\n[%.3f] TU %d: Completed final run!\n",
                               tw_now(lp),
@@ -529,7 +533,7 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
 #if DEBUG_FILE_OUTPUT
             // Print from the station, since we swapped it in here
             fprintf(node_out_file,
-                    "[TU %d] Undoing an ack from %lu \n",
+                    "[TU %d] Undoing an ack from %lu\n",
                     self,
                     s->station);
             fflush(node_out_file);
@@ -544,9 +548,6 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
 
             //Reset the min time
             SWAP(&(s->min_time), &(in_msg->next_arrival));
-
-            //Reset the delay
-            SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
 
             break;
         }
@@ -568,11 +569,9 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
                 fflush(node_out_file);
 #endif
                 // In this case, nothing to do but to unset the delay flag
-                s->delayed = 0;
+                SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
                 break;
             }
-            //Reset the delay
-            SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
 
             // First, we need to check if our route index is 0, if so, we
             // must roll back to the previous
@@ -583,17 +582,16 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
                         self);
                 fflush(node_out_file);
 #endif
-                // We don't have to reset the state here, we will get it at the end
-                //s->curr_state = TU_BOARD;
-                s->route = s->route->prev_route;
+                // If this was the last route, our route is already set
+                if (s->completed) {
+                    s->completed = 0;
+                }
+                else {
+                    // Scoot back to the previous route
+                    s->route = s->route->prev_route;
+                }
                 s->route_index = s->route->length;
-                fprintf(node_out_file,
-                        "[TU %d] resetting station %d\n", self, s->route->length - 1);
-                fflush(node_out_file);
                 s->station = s->route->route[s->route->length - 1];
-                fprintf(node_out_file,
-                        "[TU %d] resetting prev station %d\n", self, s->route->length - 2);
-                fflush(node_out_file);
                 s->prev_station = s->route->route[s->route->length - 2];
                 // Passenger features stay blank since the train empties at last stop
                 s->start = s->route->start_time - g_time_offset;
@@ -607,8 +605,13 @@ void transit_unit_event_reverse (tu_state *s, tw_bf *bf, message *in_msg, tw_lp 
                         "[TU %d] prev_station %lu\n", self, s->prev_station);
                 fprintf(node_out_file,
                         "[TU %d] start %d\n", self, s->start);
+                fprintf(node_out_file,
+                        "[TU %d] After rollover undo delayed is: %d\n", self, s->delayed);
                 fflush(node_out_file);
 #endif
+            } else {
+                //Reset the delay, if we hadn't been at the end
+                SWAP_SHORT(&(s->delayed), &(in_msg->delayed));
             }
 
             s->route_index -= 1;

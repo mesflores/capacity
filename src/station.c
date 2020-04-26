@@ -131,7 +131,6 @@ void station_event (station_state *s, tw_bf *bf, message *in_msg, tw_lp *lp) {
                 // All these passengers got on here I guess
                 msg->source = self;
                 msg->next_arrival = curr_track->next_arrival;
-                msg->delayed=0; //NOTE: this might be unnecessary?
                 //tw_output(lp, "[%.3f] ST %d: Sending ack message to %d on track %d!\n", tw_now(lp), self, in_msg->source, curr_track->track_id);
 #if DEBUG_FILE_OUTPUT
                 fprintf(node_out_file, "[ST %d]: Sending ack message to %lu on track %d!\n", self, in_msg->source, curr_track->track_id);
