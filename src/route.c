@@ -19,6 +19,7 @@
 void init_global_routes(const char* routes_fn) {
     char line[MAX_ROUTE_CHARS]; //XXX DANGEROUS, assumes shortish lines
     char stops[MAX_NUM_STOPS][MAX_NUM_STOP_CHARS]; // XXX less but STILL DANGEROUS
+    int times[MAX_NUM_STOPS]; // XXX less but STILL DANGEROUS
 
     int start_time = 0;
     int end_time = 0;
@@ -37,7 +38,7 @@ void init_global_routes(const char* routes_fn) {
     int i;
 
     // TODO: Add the path as a proper arg
-    FILE* dat_file = fopen(routes_fn, "r"); 
+    FILE* dat_file = fopen(routes_fn, "r");
     if (dat_file == NULL) {
         perror("Failed to open routes file!");
         exit(-1);
@@ -58,7 +59,7 @@ void init_global_routes(const char* routes_fn) {
             // Go ahead and allocate space for those bad boys
             route_list = (route_t* )calloc(total_routes, sizeof(route_t));
             continue;
-        } 
+        }
         // Ok now, we are parsing the regular lines
         // Strip the newline
         newline = strchr(line, '\n');
@@ -82,16 +83,18 @@ void init_global_routes(const char* routes_fn) {
 
             // That second one is the time
             token = strsep(&end, ",");
+            times[stop_counter] = atoi(token);
             if (start_time == 0) {
                 start_time = atoi(token);
             }
             end_time = atoi(token);
+
             // Clean up our strsep mess
             free(line_holder);
 
             // Bump the counter
             stop_counter++;
-            // Get the next one 
+            // Get the next one
             curr = strtok(NULL, " ");
         }
         // On the last interation, we dont move to next stop
@@ -104,11 +107,14 @@ void init_global_routes(const char* routes_fn) {
         (route_list[curr_route]).length = stop_counter + 1;
         (route_list[curr_route]).stops = (char**)calloc(stop_counter +1, sizeof(char*));
         (route_list[curr_route]).route = (int*)calloc(stop_counter +1, sizeof(int));
+        (route_list[curr_route]).stop_time= (int*)calloc(stop_counter +1, sizeof(int));
         for(i=0; i < stop_counter+1; i++) {
-            // Make some space for that name 
+            // Make some space for that name
             (route_list[curr_route]).stops[i] = (char *)calloc(strlen(stops[i]) + 1, sizeof(char)); 
             // Copy it
             strcpy((route_list[curr_route]).stops[i], stops[i]);
+            // Stash the times too
+            (route_list[curr_route]).stop_time[i] = times[i];
             // Make an array of the ID mapped versions
             (route_list[curr_route]).route[i] = sta_id_lookup(stops[i]);
         }
@@ -127,12 +133,12 @@ void init_global_routes(const char* routes_fn) {
     }
 
     g_total_routes = total_routes;
-    g_total_transit_units = allocate_transit_units(); 
+    g_total_transit_units = allocate_transit_units();
 
     return;
 }
 
-/* 
+/*
  * Make a new, blank, route set.
  */
 route_set_t* create_set() {
@@ -143,7 +149,7 @@ route_set_t* create_set() {
         perror("Failed to allocate new route list!\n");
         exit(1);
     }
-    
+
     new_set->first_route = NULL;
     new_set->last_route = NULL;
     new_set->curr_end = 0;
@@ -152,7 +158,7 @@ route_set_t* create_set() {
     return new_set;
 }
 
-/* 
+/*
  * Add a route to this set.
  */
 int add_route(route_set_t* curr_set, route_t* new_route){
@@ -169,12 +175,12 @@ int add_route(route_set_t* curr_set, route_t* new_route){
     if ((curr_set->curr_end !=0) &&
         ((curr_set->last_route->terminal != new_route->origin) ||
         (new_route->start_time <= curr_set->curr_end))) {
-        return 1; 
+        return 1;
     }
 
 
 
-    // Actually staple it to the end   
+    // Actually staple it to the end
     if (curr_set->first_route == NULL) {
         curr_set->first_route = new_route;
         curr_set->last_route = new_route;
@@ -182,7 +188,7 @@ int add_route(route_set_t* curr_set, route_t* new_route){
         new_route->prev_route = curr_set->last_route;
         curr_set->last_route->next_route = new_route;
     }
-    
+
     // Bump the endings
     curr_set->last_route = new_route;
     curr_set->curr_end = new_route->end_time;
@@ -299,4 +305,16 @@ long int get_next(route_t* route_obj, int* current){
         return -1;
     }
     return route_obj->route[(*current)+1];
+}
+
+int get_next_time(route_t* route_obj, int* current){
+
+    int i;
+    int* route;
+
+    // If the next one is past the  edge, just go home
+    if (((*current) + 1)  == route_obj->length) {
+        return -1;
+    }
+    return route_obj->stop_time[(*current)+1];
 }

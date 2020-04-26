@@ -9,6 +9,7 @@
 typedef struct route_t {
     char **stops; //Station names
     int* route; // The set of stations themselves
+    int* stop_time; // the set of times, matches stations
     int length;
     int start_time;
     int end_time;
@@ -50,6 +51,7 @@ int get_g_start_time();
 route_t* get_route(int id);
 
 long int get_next(route_t* route_obj, int* current);
+int get_next_time(route_t* route_obj, int* current);
 
 
 
