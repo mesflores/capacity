@@ -65,6 +65,6 @@ void station_final(station_state *s, tw_lp *lp);
 
 // Tracing
 extern void station_ev_trace(void *msg, tw_lp *lp, char *buffer, int *collect_flag);
-extern void station_stat_collect(state *s, tw_lp *lp, char *buffer);
+extern void station_stat_collect(station_state *s, tw_lp *lp, char *buffer);
 
 #endif

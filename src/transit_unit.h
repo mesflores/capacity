@@ -53,6 +53,6 @@ int advance_route(tu_state *s, tw_lp *lp);
 
 // Tracing
 extern void transit_unit_ev_trace(void *msg, tw_lp *lp, char *buffer, int *collect_flag);
-extern void transit_unit_stat_collect(state *s, tw_lp *lp, char *buffer);
+extern void transit_unit_stat_collect(tu_state *s, tw_lp *lp, char *buffer);
 
 #endif
