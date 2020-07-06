@@ -658,9 +658,8 @@ void transit_unit_ev_trace(void *msg, tw_lp *lp, char *buffer, int *collect_flag
 }
 
 void transit_unit_stat_collect(tu_state *s, tw_lp *lp, char *buffer) {
-    (void) s;
-    (void) lp;
-    (void) buffer;
+    int type = (int) s->curr_state;
+    memcpy(buffer, &type, sizeof(type));
     return;
 }
 

@@ -46,7 +46,7 @@ st_model_types model_types[] = {
     (ev_trace_f) station_ev_trace,
     0, // Size
     (model_stat_f) station_stat_collect,
-    0, // size
+    sizeof(int), // size
     NULL, //(sample_event_f)
     NULL, //(sample_revent_f)
     0
@@ -55,7 +55,7 @@ st_model_types model_types[] = {
     (ev_trace_f) transit_unit_ev_trace,
     0, // Size
     (model_stat_f) transit_unit_stat_collect,
-    0, // size
+    sizeof(int), // size
     NULL, //(sample_event_f)
     NULL, //(sample_revent_f)
     0
@@ -148,6 +148,8 @@ int capacity_main (int argc, char* argv[]) {
 
     // set the global variable and initialize each LP's type
     g_tw_lp_types = model_lps;
+    g_st_model_types = model_types;
+    g_st_ev_trace = 1;
 
     tw_lp_setup_types();
 

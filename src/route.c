@@ -197,7 +197,7 @@ int add_route(route_set_t* curr_set, route_t* new_route){
 }
 
 /*
- * Spin through the routes and assign them to transit units. For now. just do it 
+ * Spin through the routes and assign them to transit units. For now. just do it
  * greedily from the front, for simplicity
  */
 int allocate_transit_units() {
@@ -217,7 +217,7 @@ int allocate_transit_units() {
     // Spin through all the routes and add them to the first
     // set that will take them. Make a new one if none will.
     for(i=0; i < g_total_routes; i++) {
-        curr_set = route_set_list_l; 
+        curr_set = route_set_list_l;
         while(add_route(curr_set, &route_list[i]) != 0) {
             // Are we at the end of the list?
             if (curr_set->next == NULL) {
@@ -246,7 +246,7 @@ int allocate_transit_units() {
     return num_transit_units;
 }
 
-/* 
+/*
  * Dump the global route table, so I can see if it what I think
  */
 void print_global_routes() {

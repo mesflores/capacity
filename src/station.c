@@ -473,9 +473,8 @@ void station_ev_trace(void *msg, tw_lp *lp, char *buffer, int *collect_flag) {
 }
 
 void station_stat_collect(station_state *s, tw_lp *lp, char *buffer) {
-    (void) s;
-    (void) lp;
-    (void) buffer;
+    int type = (int) s->left.track_id;
+    memcpy(buffer, &type, sizeof(type));
     return;
 }
 
